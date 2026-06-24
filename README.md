@@ -1,4 +1,4 @@
-# 🎵 Qji 奏在 (Kanzai) — Hi-Fi Music Player for Linux
+# 🎵 Qji 奏在 (Souzai) — Hi-Fi Music Player for Linux
 
 **A high-fidelity terminal music player for Ubuntu / Debian-based Linux**
 
