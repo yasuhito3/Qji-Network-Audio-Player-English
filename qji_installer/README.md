@@ -14,8 +14,6 @@ and spatial filtering.
 **License:** [MIT](./LICENSE)
 **Before installing:** please read [Security & Risks](./SECURITY.md)
 
-> 🇯🇵 日本語版の README は [README.md](yasuhito3/Qji-Network-Audio-Player/blob/main/README.md) をご覧ください。
-
 ---
 
 ## ✨ Features
