@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Qji.py - Hi-fi music player for Linux (encoding-robust build) + preset system
-Cover-art browser / music playback system
+Qji.py - 日本語対応改善版（エンコーディング強化）+ プリセット機能
+ジャケット画像選曲機能付き音楽再生システム
 
-[New features] Preset management
-- Save current settings (volume, audio preset, gain preset, etc.) by name
-- Load saved presets at any time
-- List and delete presets
-- Config file: ~/.music_player_presets.json
+【新機能】プリセット管理
+- 現在の設定（音量、オーディオプリセット、ゲインプリセット等）を名前付きで保存
+- 保存したプリセットをいつでも読み込んで適用可能
+- プリセット一覧の表示と削除機能
+- 設定ファイル: ~/.music_player_presets.json
 """
 
 import os
@@ -53,11 +53,11 @@ try:
     from acoustic_spaces import get_space as _si_get_space
     _si_instance = _SoniaIntelligence()
     SI_AVAILABLE = True
-    print("✅ Sonia Intelligence System: loaded successfully")
+    print("✅ Sonia Intelligence System: 読み込み成功")
 except Exception as _si_e:
     SI_AVAILABLE = False
     _si_instance = None
-    print(f"⚠️  Sonia Intelligence System: disabled ({_si_e})")
+    print(f"⚠️  Sonia Intelligence System: 無効 ({_si_e})")
 # ===== ★★★ Sonia Intelligence System ここまで ★★★ =====
 
 # Webサーバー用インポート
@@ -106,16 +106,16 @@ def pad_string_by_width(text, target_width):
     return text + (' ' * padding)
 
 def check_locale_support():
-    """Check locale settings and warn if not UTF-8"""
+    """ロケール設定をチェックして警告を表示"""
     try:
         encoding = locale.getpreferredencoding()
         if encoding.upper() != 'UTF-8':
             print("\n" + "="*60)
-            print("⚠️  Warning: locale configuration issue")
+            print("⚠️  警告: ロケール設定の問題")
             print("="*60)
-            print(f"Current encoding: {encoding}")
-            print("Non-UTF-8 encoding detected; some characters may not display correctly.")
-            print("\nFix with:")
+            print(f"現在のエンコーディング: {encoding}")
+            print("UTF-8ではないため、日本語表示が正しくない可能性があります。")
+            print("\n以下のコマンドで修正できます:")
             print("  export LANG=ja_JP.UTF-8")
             print("  export LC_ALL=ja_JP.UTF-8")
             print("="*60 + "\n")
@@ -123,11 +123,11 @@ def check_locale_support():
             return False
         return True
     except Exception as e:
-        print(f"⚠️ Error checking locale: {e}")
+        print(f"⚠️ ロケールチェック中にエラー: {e}")
         return True
 
 def safe_print(text):
-    """Print text safely, falling back to ASCII on encode error"""
+    """安全に日本語を出力する関数"""
     try:
         print(text)
     except UnicodeEncodeError:
@@ -191,6 +191,7 @@ MUSIC_DIRS = [
     os.path.expanduser('~/Music'),
     os.path.expanduser('~/AudioFiles'),                      # ★ 追加: 新着音源用フォルダ
     '/mnt/b6311abc-2b4c-4560-91d0-609272f0af0c',  # メイン音源ドライブ
+    '/media/yasuhito/DATA',                         # DATAドライブ（/media経由）
     '/mnt/sonia',                                   # soniaドライブ
     '/media',                                       # USBマウント共通ルート
     '/mnt',                                         # マウントポイント共通ルート
@@ -1326,16 +1327,16 @@ def start_now_playing_server():
                 while now_playing_server_running:
                     httpd.handle_request()
         except OSError as e:
-            print(f"⚠️ Now Playing server failed to start: {e}")
+            print(f"⚠️ Now Playingサーバー起動失敗: {e}")
 
     now_playing_server_running = True
     now_playing_server_thread = threading.Thread(target=run_server, daemon=True)
     now_playing_server_thread.start()
     ip = get_local_ip()
-    print(f"\n📱 Now Playing mirror started!")
-    print(f"   🖼  Cover display   → http://{ip}:{NOW_PLAYING_PORT}/")
-    print(f"   🎛  Playback control → http://{ip}:{NOW_PLAYING_PORT}/control")
-    print(f"   (accessible from any device on the same Wi-Fi)\n")
+    print(f"\n📱 Now Playingミラー起動中!")
+    print(f"   🖼  ジャケット表示  → http://{ip}:{NOW_PLAYING_PORT}/")
+    print(f"   🎛  再生コントロール → http://{ip}:{NOW_PLAYING_PORT}/control")
+    print(f"   （同じWi-Fiに接続されていれば表示されます）\n")
 
 def stop_now_playing_server():
     """Now Playingサーバーを停止"""
@@ -1383,10 +1384,10 @@ def save_current_preset(preset_name):
     try:
         with open(PRESETS_FILE, 'w', encoding='utf-8') as f:
             json.dump(presets, f, ensure_ascii=False, indent=2)
-        print(f"✅ Preset '{preset_name}' saved")
+        print(f"✅ プリセット '{preset_name}' を保存しました")
         return True
     except Exception as e:
-        print(f"⚠️ Failed to save preset: {e}")
+        print(f"⚠️ プリセットの保存に失敗しました: {e}")
         return False
 
 def load_presets():
@@ -1398,7 +1399,7 @@ def load_presets():
         with open(PRESETS_FILE, 'r', encoding='utf-8') as f:
             return json.load(f)
     except Exception as e:
-        print(f"⚠️ Failed to load preset file: {e}")
+        print(f"⚠️ プリセットファイルの読み込みに失敗: {e}")
         return {}
 
 def apply_preset(preset_name):
@@ -1410,7 +1411,7 @@ def apply_preset(preset_name):
     presets = load_presets()
     
     if preset_name not in presets:
-        print(f"⚠️ Preset '{preset_name}' not found")
+        print(f"⚠️ プリセット '{preset_name}' が見つかりません")
         return False
     
     preset = presets[preset_name]
@@ -1429,11 +1430,11 @@ def apply_preset(preset_name):
         musikverein_room_effects = preset.get('musikverein_room_effects', True)  # ★★★ 追加 ★★★
         current_filter_preset = preset.get('filter_preset', 'musikverein')       # ★★★ 追加 ★★★
         
-        print(f"✅ Preset '{preset_name}' applied")
+        print(f"✅ プリセット '{preset_name}' を適用しました")
         show_current_settings()
         return True
     except Exception as e:
-        print(f"⚠️ Failed to apply preset: {e}")
+        print(f"⚠️ プリセットの適用に失敗しました: {e}")
         return False
 
 def delete_preset(preset_name):
@@ -1441,7 +1442,7 @@ def delete_preset(preset_name):
     presets = load_presets()
     
     if preset_name not in presets:
-        print(f"⚠️ Preset '{preset_name}' not found")
+        print(f"⚠️ プリセット '{preset_name}' が見つかりません")
         return False
     
     del presets[preset_name]
@@ -1449,10 +1450,10 @@ def delete_preset(preset_name):
     try:
         with open(PRESETS_FILE, 'w', encoding='utf-8') as f:
             json.dump(presets, f, ensure_ascii=False, indent=2)
-        print(f"✅ Preset '{preset_name}' deleted")
+        print(f"✅ プリセット '{preset_name}' を削除しました")
         return True
     except Exception as e:
-        print(f"⚠️ Failed to delete preset: {e}")
+        print(f"⚠️ プリセットの削除に失敗しました: {e}")
         return False
 
 def list_presets():
@@ -1460,79 +1461,79 @@ def list_presets():
     presets = load_presets()
     
     if not presets:
-        print("\n📋 No saved presets")
+        print("\n📋 保存されているプリセットはありません")
         return []
     
-    print("\n📋 Saved presets:")
+    print("\n📋 保存されているプリセット一覧:")
     print("=" * 80)
     
     preset_names = list(presets.keys())
     for i, name in enumerate(preset_names, 1):
         preset = presets[name]
         print(f"{i}. {name}")
-        print(f"   Volume: {preset.get('volume', 'N/A')} dB")
-        print(f"   Output device: {preset.get('output_device', 'N/A')}")
-        print(f"   Audio preset: {preset.get('audio_preset', 'N/A')}")
-        print(f"   Gain preset: {preset.get('gain_preset', 'N/A')}")
-        print(f"   Loudness norm.: {'ON' if preset.get('loudness_normalization') else 'OFF'}")
-        print(f"   Tinnitus red.: {'ON' if preset.get('tinnitus_reduction_mode') else 'OFF'}")
-        print(f"   Musikverein: {'ON' if preset.get('musikverein_room_effects', True) else 'OFF'}")  # ★★★ 追加 ★★★
-        print(f"   Gapless: {'ON' if preset.get('gapless_mode') else 'OFF'}")
+        print(f"   音量: {preset.get('volume', 'N/A')} dB")
+        print(f"   出力デバイス: {preset.get('output_device', 'N/A')}")
+        print(f"   オーディオプリセット: {preset.get('audio_preset', 'N/A')}")
+        print(f"   ゲインプリセット: {preset.get('gain_preset', 'N/A')}")
+        print(f"   音量一定化: {'ON' if preset.get('loudness_normalization') else 'OFF'}")
+        print(f"   耳鳴り低減: {'ON' if preset.get('tinnitus_reduction_mode') else 'OFF'}")
+        print(f"   楽友協会エフェクト: {'ON' if preset.get('musikverein_room_effects', True) else 'OFF'}")  # ★★★ 追加 ★★★
+        print(f"   ギャップレス: {'ON' if preset.get('gapless_mode') else 'OFF'}")
         upsample = preset.get('upsampling_rate', 0)
         upsample_str = f"{upsample//1000} kHz" if upsample > 0 else "OFF"
-        print(f"   Upsampling: {upsample_str}")
-        print(f"   Saved at: {preset.get('timestamp', 'N/A')}")
+        print(f"   アップサンプリング: {upsample_str}")
+        print(f"   保存日時: {preset.get('timestamp', 'N/A')}")
         print()
     
     return preset_names
 
 def show_current_settings():
     """現在の設定を表示"""
-    print("\n⚙️  Current settings:")
+    print("\n⚙️  現在の設定:")
     print("=" * 60)
-    print(f"  Volume: {CURRENT_VOLUME} dB")
-    print(f"  Output device: {output_device}")
-    print(f"  Audio preset: {current_audio_preset}")
-    print(f"  Gain preset: {current_gain_preset}")
-    print(f"  Loudness norm.: {'ON' if loudness_normalization else 'OFF'}")
-    print(f"  Tinnitus red.: {'ON' if tinnitus_reduction_mode else 'OFF'}")
-    print(f"  Air Particle Layer: {'ON' if air_particle_layer else 'OFF'}")
-    print(f"  Musikverein room effects: {'ON' if musikverein_room_effects else 'OFF'}")  # ★★★ 追加 ★★★
-    print(f"  Gapless playback: {'ON' if gapless_mode_enabled else 'OFF'}")
+    print(f"  音量: {CURRENT_VOLUME} dB")
+    print(f"  出力デバイス: {output_device}")
+    print(f"  オーディオプリセット: {current_audio_preset}")
+    print(f"  ゲインプリセット: {current_gain_preset}")
+    print(f"  音量一定化: {'ON' if loudness_normalization else 'OFF'}")
+    print(f"  耳鳴り低減: {'ON' if tinnitus_reduction_mode else 'OFF'}")
+    print(f"  音場調整 (Air Particle Layer): {'ON' if air_particle_layer else 'OFF'}")
+    print(f"  楽友協会ルームエフェクト: {'ON' if musikverein_room_effects else 'OFF'}")  # ★★★ 追加 ★★★
+    print(f"  ギャップレス再生: {'ON' if gapless_mode_enabled else 'OFF'}")
     upsample_str = f"{upsampling_target_rate//1000} kHz" if upsampling_target_rate > 0 else "OFF"
-    print(f"  Upsampling: {upsample_str}")
+    print(f"  アップサンプリング: {upsample_str}")
     print("=" * 60)
 
 def preset_management_menu():
     """プリセット管理メニュー"""
     while True:
         print("\n" + "=" * 60)
-        print("💾 Preset management")
+        print("💾 プリセット管理")
         print("=" * 60)
-        print("1. Save current settings as a preset")
-        print("2. Load and apply a preset")
-        print("3. List presets")
-        print("4. Delete a preset")
-        print("5. Show current settings")
-        print("0. Back to main menu")
+        print("1. 現在の設定をプリセットとして保存")
+        print("2. プリセットを読み込んで適用")
+        print("3. プリセット一覧を表示")
+        print("4. プリセットを削除")
+        print("5. 現在の設定を表示")
+        print("0. メインメニューに戻る")
         print("=" * 60)
         
-        choice = input("\nSelect: ").strip()
+        choice = input("\n選択してください: ").strip()
         
         if choice == '1':
             # プリセット保存
             show_current_settings()
-            preset_name = input("\nEnter preset name: ").strip()
+            preset_name = input("\nプリセット名を入力してください: ").strip()
             if not preset_name:
-                print("⚠️ No preset name entered")
+                print("⚠️ プリセット名が入力されませんでした")
                 continue
             
             # 既存のプリセットを確認
             presets = load_presets()
             if preset_name in presets:
-                confirm = input(f"⚠️ Preset '{preset_name}' already exists. Overwrite? (y/n): ").strip().lower()
+                confirm = input(f"⚠️ プリセット '{preset_name}' は既に存在します。上書きしますか? (y/n): ").strip().lower()
                 if confirm != 'y':
-                    print("Cancelled")
+                    print("キャンセルしました")
                     continue
             
             save_current_preset(preset_name)
@@ -1541,10 +1542,10 @@ def preset_management_menu():
             # プリセット読み込み
             preset_names = list_presets()
             if not preset_names:
-                input("\nPress Enter to continue...")
+                input("\nEnterキーを押して続行...")
                 continue
             
-            selection = input("\nEnter preset number to load (or name): ").strip()
+            selection = input("\n読み込むプリセット番号を入力してください (または名前): ").strip()
             
             # 番号で選択
             if selection.isdigit():
@@ -1552,54 +1553,54 @@ def preset_management_menu():
                 if 0 <= idx < len(preset_names):
                     apply_preset(preset_names[idx])
                 else:
-                    print("⚠️ Invalid number")
+                    print("⚠️ 無効な番号です")
             # 名前で選択
             else:
                 apply_preset(selection)
             
-            input("\nPress Enter to continue...")
+            input("\nEnterキーを押して続行...")
         
         elif choice == '3':
             # プリセット一覧表示
             list_presets()
-            input("\nPress Enter to continue...")
+            input("\nEnterキーを押して続行...")
         
         elif choice == '4':
             # プリセット削除
             preset_names = list_presets()
             if not preset_names:
-                input("\nPress Enter to continue...")
+                input("\nEnterキーを押して続行...")
                 continue
             
-            selection = input("\nEnter preset number to delete (or name): ").strip()
+            selection = input("\n削除するプリセット番号を入力してください (または名前): ").strip()
             
             # 番号で選択
             if selection.isdigit():
                 idx = int(selection) - 1
                 if 0 <= idx < len(preset_names):
-                    confirm = input(f"⚠️ Delete preset '{preset_names[idx]}'? (y/n): ").strip().lower()
+                    confirm = input(f"⚠️ プリセット '{preset_names[idx]}' を削除しますか? (y/n): ").strip().lower()
                     if confirm == 'y':
                         delete_preset(preset_names[idx])
                 else:
-                    print("⚠️ Invalid number")
+                    print("⚠️ 無効な番号です")
             # 名前で選択
             else:
-                confirm = input(f"⚠️ Delete preset '{selection}'? (y/n): ").strip().lower()
+                confirm = input(f"⚠️ プリセット '{selection}' を削除しますか? (y/n): ").strip().lower()
                 if confirm == 'y':
                     delete_preset(selection)
             
-            input("\nPress Enter to continue...")
+            input("\nEnterキーを押して続行...")
         
         elif choice == '5':
             # 現在の設定表示
             show_current_settings()
-            input("\nPress Enter to continue...")
+            input("\nEnterキーを押して続行...")
         
         elif choice == '0':
             break
         
         else:
-            print("⚠️ Invalid selection")
+            print("⚠️ 無効な選択です")
 
 # ===== イコライザー統合 =====
 EQUALIZER_SCRIPT = os.path.expanduser('~/audio_equalizer.py')
@@ -1776,9 +1777,9 @@ def display_track_info_thread():
                         # ★★★ フィルタープリセット表示行（常時更新） ★★★
                         _fp_label = FILTER_PRESET_LABELS.get(current_filter_preset, current_filter_preset)
                         if SI_AVAILABLE and _si_instance and _si_instance._last_was_default:
-                            _fp_text = f"  🎛️  Filter: {_fp_label}  ✦auto-genre"
+                            _fp_text = f"  🎛️  フィルター: {_fp_label}  ✦ジャンル自動"
                         else:
-                            _fp_text = f"  🎛️  Filter: {_fp_label}"
+                            _fp_text = f"  🎛️  フィルター: {_fp_label}"
                         _fp_disp = truncate_string_by_width(_fp_text, 76)
                         _fp_padded = pad_string_by_width(_fp_disp, 78)
                         sys.stdout.write(f"\033[44;97m{_fp_padded}\033[0m\n")
@@ -1846,7 +1847,7 @@ def update_track_info(track_path, mode='', track_num=0, total_tracks=0):
                 current_track_info['duration'] = ''
                 
     except Exception as e:
-        safe_print(f"⚠️ Track info error: {e}")
+        safe_print(f"⚠️ 曲情報取得エラー: {e}")
         current_track_info['title'] = os.path.basename(track_path)
 
 def clear_track_info():
@@ -2047,13 +2048,13 @@ def detect_usb_microphone():
     try:
         import sounddevice as sd
         devices = sd.query_devices()
-        print("🎤 Available recording devices:")
+        print("🎤 利用可能な録音デバイス:")
         candidates = []
         for i, device in enumerate(devices):
             if device.get('max_input_channels', 0) > 0:
                 name = device.get('name', '')
                 hostapi = device.get('hostapi', '')
-                print(f"   {i}: {name} (input: {device['max_input_channels']}ch, default_samplerate: {device.get('default_samplerate')})")
+                print(f"   {i}: {name} (入力: {device['max_input_channels']}ch, default_samplerate: {device.get('default_samplerate')})")
                 # 優先候補: 名前に usb や audio 等が含まれるもの、あるいは hostapi に "ALSA"/"Windows WASAPI" 等
                 lname = name.lower()
                 if any(k in lname for k in ['usb', 'audio', 'microphone', 'mic', 'alsa', 'wasapi', 'asio']):
@@ -2062,7 +2063,7 @@ def detect_usb_microphone():
         chosen = None
         if candidates:
             chosen = candidates[0]
-            print(f"   ✅ Selected: {devices[chosen]['name']}")
+            print(f"   ✅ 候補から選択: {devices[chosen]['name']}")
         else:
             # sd.default.device は (input_idx, output_idx) のタプルを返す場合がある
             try:
@@ -2074,39 +2075,39 @@ def detect_usb_microphone():
             except Exception:
                 chosen = None
             if chosen is not None:
-                print(f"   ℹ Using default input device: {devices[chosen]['name']}")
+                print(f"   ℹ デフォルト入力デバイスを使用: {devices[chosen]['name']}")
             else:
-                print("⚠️ Microphone auto-selection failed. Use --mic-device to specify manually.")
+                print("⚠️ マイク自動選択に失敗しました。--mic-device で明示指定してください。")
                 return None
 
         USB_MIC_DEVICE_ID = chosen
-        print(f"🎤 Microphone device ID: {USB_MIC_DEVICE_ID}")
+        print(f"🎤 マイクデバイスID: {USB_MIC_DEVICE_ID}")
         return USB_MIC_DEVICE_ID
     except Exception as e:
-        print(f"⚠️ Microphone detection error: {e}")
+        print(f"⚠️ マイクデバイス検出エラー: {e}")
         return None
 
 
 def safe_load_database():
     """データベースを安全に読み込む"""
     if not os.path.exists(DATABASE_FILE):
-        print("⚠ Database file not found")
-        print(f"Run 'python3 music_mood_analyzer.py' first to create the database")
+        print("⚠ データベースファイルが見つかりません")
+        print(f"先に 'python3 music_mood_analyzer.py' でデータベースを作成してください")
         return None
     try:
         with open(DATABASE_FILE, 'r', encoding='utf-8') as f:
             db = json.load(f)
         if not isinstance(db, list):
-            print("⚠ Invalid database format")
+            print("⚠ データベース形式が不正です")
             return None
         valid_tracks = []
         for track in db:
             if isinstance(track, dict) and 'features' in track and 'path' in track:
                 valid_tracks.append(track)
-        print(f"✅ Database loaded: {len(valid_tracks)} tracks")
+        print(f"✅ データベース読み込み成功: {len(valid_tracks)}曲")
         return valid_tracks
     except Exception as e:
-        print(f"⚠ Database load error: {e}")
+        print(f"⚠ データベース読み込みエラー: {e}")
         return None
 
 
@@ -2143,7 +2144,7 @@ def get_folder_tracks(folder_path):
                 tracks.append(track_info)
         return tracks
     except Exception as e:
-        print(f"Error getting folder tracks: {e}")
+        print(f"フォルダートラック取得エラー: {e}")
         return []
 
 
@@ -2156,7 +2157,7 @@ def ask_start_track(folder_tracks, auto_play_seconds=7):
     """
     if not folder_tracks:
         return folder_tracks
-    print("\n📋 Track list:")
+    print("\n📋 曲一覧:")
     print("─" * 60)
     for i, t in enumerate(folder_tracks, 1):
         title    = t.get('title', '') or t.get('filename', '')
@@ -2184,13 +2185,13 @@ def ask_start_track(folder_tracks, auto_play_seconds=7):
     deadline = time.time() + auto_play_seconds
     typed = ''
 
-    sys.stdout.write(f"▶ Enter start track (1–{total}) — auto-play in {auto_play_seconds}s: ")
+    sys.stdout.write(f"▶ 開始曲番号を入力 (1〜{total}) — {auto_play_seconds}秒後に自動再生: ")
     sys.stdout.flush()
 
     while True:
         remaining = deadline - time.time()
         if remaining <= 0:
-            print(f"\n⏱️  {auto_play_seconds}s elapsed → auto-playing from the start")
+            print(f"\n⏱️  {auto_play_seconds}秒経過 → 先頭から自動再生します")
             return folder_tracks
 
         if select.select([sys.stdin], [], [], 0.1)[0]:
@@ -2205,19 +2206,19 @@ def ask_start_track(folder_tracks, auto_play_seconds=7):
                     if 1 <= n <= total:
                         if n == 1:
                             return folder_tracks
-                        print(f"✅ Starting from track {n}: '{folder_tracks[n-1].get('title', folder_tracks[n-1].get('filename',''))}'")
+                        print(f"✅ {n}曲目「{folder_tracks[n-1].get('title', folder_tracks[n-1].get('filename',''))}」から再生します")
                         return folder_tracks[n - 1:]
                     else:
-                        print(f"⚠️  Enter a number between 1 and {total}")
+                        print(f"⚠️  1〜{total} の範囲で入力してください")
                         typed = ''
                         deadline = time.time() + auto_play_seconds
-                        sys.stdout.write(f"▶ Enter start track (1–{total}) — auto-play in {auto_play_seconds}s: ")
+                        sys.stdout.write(f"▶ 開始曲番号を入力 (1〜{total}) — {auto_play_seconds}秒後に自動再生: ")
                         sys.stdout.flush()
                 else:
-                    print("⚠️  Please enter a number (or just press Enter for track 1)")
+                    print("⚠️  数字を入力してください（Enterで先頭から）")
                     typed = ''
                     deadline = time.time() + auto_play_seconds
-                    sys.stdout.write(f"▶ Enter start track (1–{total}) — auto-play in {auto_play_seconds}s: ")
+                    sys.stdout.write(f"▶ 開始曲番号を入力 (1〜{total}) — {auto_play_seconds}秒後に自動再生: ")
                     sys.stdout.flush()
             elif ch in ('\x7f', '\x08'):
                 if typed:
@@ -2232,7 +2233,7 @@ def ask_start_track(folder_tracks, auto_play_seconds=7):
             # 入力途中でなければ残り秒数を上書き表示
             if not typed:
                 secs_left = max(0, int(remaining) + 1)
-                sys.stdout.write(f"\r▶ Enter start track (1–{total}) — auto-play in {secs_left}s: ")
+                sys.stdout.write(f"\r▶ 開始曲番号を入力 (1〜{total}) — {secs_left}秒後に自動再生: ")
                 sys.stdout.flush()
 
 
@@ -2265,7 +2266,7 @@ def find_cover_image_safe(track_path):
         return _extract_embedded_cover(track_path)
 
     except Exception as e:
-        print(f"Error searching for cover art: {e}")
+        print(f"ジャケット画像検索中にエラー: {e}")
         return None
 
 
@@ -2369,7 +2370,7 @@ def show_cover_image(image_path):
     try:
         subprocess.run(['which', 'feh'], check=True, capture_output=True)
     except subprocess.CalledProcessError:
-        print("⚠️ 'feh' command not found — skipping cover art display.")
+        print("⚠️ fehコマンドが見つかりません。ジャケット画像表示をスキップします。")
         return None
     cmd = [
         "feh",
@@ -2384,7 +2385,7 @@ def show_cover_image(image_path):
     try:
         return subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except Exception as e:
-        print(f"⚠️ Cover art display error: {e}")
+        print(f"⚠️ ジャケット画像表示エラー: {e}")
         return None
 
 
@@ -2588,7 +2589,7 @@ def create_cover_with_info(image_path, track_info):
     
     except Exception as e:
         # エラーが発生した場合は元の画像を返す
-        print(f"⚠️ Error generating track-info image: {e}")
+        print(f"⚠️ 曲情報付き画像生成エラー: {e}")
         return image_path
 
 
@@ -2610,7 +2611,7 @@ def show_cover_image_with_info(image_path, track_info=None):
     try:
         subprocess.run(['which', 'feh'], check=True, capture_output=True)
     except subprocess.CalledProcessError:
-        print("⚠️ 'feh' command not found — skipping cover art display.")
+        print("⚠️ fehコマンドが見つかりません。ジャケット画像表示をスキップします。")
         return None
     
     cmd = [
@@ -2627,7 +2628,7 @@ def show_cover_image_with_info(image_path, track_info=None):
     try:
         return subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except Exception as e:
-        print(f"⚠️ Cover art display error: {e}")
+        print(f"⚠️ ジャケット画像表示エラー: {e}")
         return None
 
 
@@ -2743,17 +2744,17 @@ def _radio_tty_input(prompt: str) -> str:
         result = _tty.readline().rstrip("\n").strip()
         _tty.close()
     except Exception as e:
-        print(f"\n⚠️ Input error: {e}")
+        print(f"\n⚠️ 入力エラー: {e}")
     return result
 
 
 def _radio_preset_summary_lines(p: dict) -> list:
     """プリセット辞書を人間が読める行リストに変換する。"""
     _fp  = FILTER_PRESET_LABELS.get(p.get('filter_preset', ''), p.get('filter_preset', '---'))
-    _apl = ('Kanzai Full'   if (p.get('musikverein_room_effects') and p.get('air_particle_layer'))
-            else 'Musikverein only' if p.get('musikverein_room_effects')
+    _apl = ('〔奏在〕フル'   if (p.get('musikverein_room_effects') and p.get('air_particle_layer'))
+            else '楽友協会のみ' if p.get('musikverein_room_effects')
             else 'Air Particle' if p.get('air_particle_layer') else 'OFF')
-    _gain_labels = {'classical': 'Classical(0dB)', 'general': 'General(-1.5dB)', 'jazz_pop': 'Pop(-3.5dB)', 'loud': 'Loud(-5dB)'}
+    _gain_labels = {'classical': 'クラシック(0dB)', 'general': '汎用(-1.5dB)', 'jazz_pop': 'ポップス(-3.5dB)', 'loud': 'ラウド(-5dB)'}
     _gain = _gain_labels.get(p.get('gain_preset', ''), p.get('gain_preset', '---'))
     _vol  = p.get('volume', 0)
     _echo = p.get('echo_mode', '---')
@@ -2761,10 +2762,10 @@ def _radio_preset_summary_lines(p: dict) -> list:
     _loud = 'ON' if p.get('loudness_normalization')  else 'OFF'
     si_eq = p.get('si_eq', {})
     lines = [
-        f"  Filter    : {_fp}",
-        f"  Air Layer : {_apl}  Echo: {_echo}",
-        f"  Input gain: {_gain}  Output: {_vol:+d}dB",
-        f"  Tinnitus  : {_tin}  Loudness norm: {_loud}",
+        f"  フィルター: {_fp}",
+        f"  Air Layer : {_apl}  エコー: {_echo}",
+        f"  入力ゲイン: {_gain}  出力: {_vol:+d}dB",
+        f"  耳鳴り低減: {_tin}  音量一定化: {_loud}",
     ]
     if si_eq:
         _eq_str = '  '.join(f"{k}:{v:+.1f}" for k, v in si_eq.items() if abs(v) >= 0.1)
@@ -2785,20 +2786,20 @@ def _save_radio_station_preset(station):
     lines = _radio_preset_summary_lines(preset_data)
     print("\n")
     print("┌──────────────────────────────────────────────────────┐")
-    print("│  💾  Save radio station preset                       │")
+    print("│  💾  ラジオ局プリセット保存                          │")
     print("├──────────────────────────────────────────────────────┤")
-    print(f"│  Station : {name[:41]:<41} │")
+    print(f"│  局  : {name[:44]:<44} │")
     print("├──────────────────────────────────────────────────────┤")
     for line in lines:
         print(f"│{line:<54} │")
     print("├──────────────────────────────────────────────────────┤")
-    print("│  Save these settings for this station?               │")
-    print("│    [y] Save  /  Enter = Cancel                       │")
+    print("│  この局の設定として保存しますか？                    │")
+    print("│    [y] 保存  /  Enter = キャンセル                   │")
     print("└──────────────────────────────────────────────────────┘")
 
-    choice = _radio_tty_input("  Select → ")
+    choice = _radio_tty_input("  選択 → ")
     if choice.lower() != 'y':
-        print("  Cancelled")
+        print("  キャンセルしました")
         return
 
     preset_data['station_name'] = name
@@ -2811,10 +2812,10 @@ def _save_radio_station_preset(station):
         with open(PRESETS_FILE, 'w', encoding='utf-8') as f:
             json.dump(presets, f, ensure_ascii=False, indent=2)
         _si_mark = '（SI EQデルタ含む）' if preset_data.get('si_eq') else ''
-        print(f"\n  ✅ Audio settings saved for '{name}' {_si_mark}")
-        print(f"     Will load automatically next time this station plays")
+        print(f"\n  ✅ 「{name}」の音場設定を保存しました {_si_mark}")
+        print(f"     次回この局の再生時に自動的に読み込まれます")
     except Exception as e:
-        print(f"\n  ⚠️ Save failed: {e}")
+        print(f"\n  ⚠️ 保存に失敗しました: {e}")
 
 
 def _load_radio_station_preset(station) -> bool:
@@ -2828,7 +2829,7 @@ def _load_radio_station_preset(station) -> bool:
         _apply_radio_preset(radio_presets[url])
         return True
     except Exception as e:
-        print(f"⚠️ Radio preset load error: {e}")
+        print(f"⚠️ ラジオプリセット読み込みエラー: {e}")
         return False
 
 
@@ -2841,60 +2842,60 @@ def _copy_from_station_menu(current_station) -> bool:
         presets   = load_presets()
         radio_all = presets.get('radio_stations', {})
     except Exception as e:
-        print(f"\n  ⚠️ Preset load error: {e}")
+        print(f"\n  ⚠️ プリセット読み込みエラー: {e}")
         return False
 
     current_url    = current_station['url']
     other_stations = [(url, p) for url, p in radio_all.items() if url != current_url]
 
     if not other_stations:
-        print("\n  ℹ️  No presets saved for other stations")
-        print("     Save settings for other stations first with [s], then try again")
-        _radio_tty_input("  [Press Enter to go back] ")
+        print("\n  ℹ️  他の局の保存済みプリセットがありません")
+        print("     他の局でも [s] キーで設定を保存してからお試しください")
+        _radio_tty_input("  [Enter で戻る] ")
         return False
 
     print("\n")
     print("┌──────────────────────────────────────────────────────┐")
-    print("│  📋  Saved radio station presets                     │")
-    print("│  ─ Select a station number to copy settings from ─   │")
+    print("│  📋  保存済みラジオ局プリセット一覧                  │")
+    print("│  ─ 設定をコピーしたい局の番号を選んでください ─      │")
     print("├──────────────────────────────────────────────────────┤")
     for i, (url, p) in enumerate(other_stations, 1):
         sname = p.get('station_name', url)[:38]
         ts    = p.get('timestamp', '')[:10]
         _fp   = FILTER_PRESET_LABELS.get(p.get('filter_preset', ''), '---')
-        _apl  = ('Kanzai Full'  if (p.get('musikverein_room_effects') and p.get('air_particle_layer'))
-                 else 'Musikverein'  if p.get('musikverein_room_effects')
+        _apl  = ('〔奏在〕フル'  if (p.get('musikverein_room_effects') and p.get('air_particle_layer'))
+                 else '楽友協会'  if p.get('musikverein_room_effects')
                  else 'AirLayer'  if p.get('air_particle_layer') else 'OFF')
         _si_mark = ' ✦SI' if p.get('si_eq') else ''
         print(f"│  {i:2d}. {sname:<38} │")
         print(f"│      {_fp} | {_apl}{_si_mark:<20}  ({ts}) │")
         print("│                                                      │")
     print("├──────────────────────────────────────────────────────┤")
-    print("│  [Number] to select  /  Enter = Cancel               │")
+    print("│  [番号] で選択  /  Enter = キャンセル                │")
     print("└──────────────────────────────────────────────────────┘")
 
-    choice = _radio_tty_input("  Select number → ")
+    choice = _radio_tty_input("  番号を選択 → ")
     if not choice.strip().isdigit():
-        print("  Cancelled")
+        print("  キャンセルしました")
         return False
     idx = int(choice.strip()) - 1
     if not (0 <= idx < len(other_stations)):
-        print("  Invalid number")
+        print("  無効な番号です")
         return False
 
     src_url, src_preset = other_stations[idx]
     src_name = src_preset.get('station_name', src_url)
 
-    print(f"\n  ── Settings from '{src_name}' ──")
+    print(f"\n  ── 「{src_name}」の設定 ──")
     for line in _radio_preset_summary_lines(src_preset):
         print(f" {line}")
-    confirm = _radio_tty_input(f"\n  Apply these settings to the current station? [y/Enter=cancel] → ")
+    confirm = _radio_tty_input(f"\n  この設定を現在の局に適用しますか？ [y/Enter=キャンセル] → ")
     if confirm.lower() != 'y':
-        print("  Cancelled")
+        print("  キャンセルしました")
         return False
 
     _apply_radio_preset(src_preset)
-    print(f"\n  ✅ Settings from '{src_name}' applied → restarting stream")
+    print(f"\n  ✅ 「{src_name}」の設定を適用しました → ストリームを再起動します")
     return True
 
 
@@ -2905,22 +2906,22 @@ def _reset_radio_preset() -> bool:
     """
     print("\n")
     print("┌──────────────────────────────────────────────────────┐")
-    print("│  🔄  Reset audio settings to default                 │")
+    print("│  🔄  音場設定をデフォルトにリセット                  │")
     print("├──────────────────────────────────────────────────────┤")
-    print("│  Will revert to:                                     │")
+    print("│  以下の設定に戻ります:                               │")
     for line in _radio_preset_summary_lines(_RADIO_DEFAULT_PRESET):
         print(f"│{line:<54} │")
     print("├──────────────────────────────────────────────────────┤")
-    print("│    [y] Reset  /  Enter = Cancel                      │")
+    print("│    [y] リセット  /  Enter = キャンセル               │")
     print("└──────────────────────────────────────────────────────┘")
 
-    choice = _radio_tty_input("  Select → ")
+    choice = _radio_tty_input("  選択 → ")
     if choice.lower() != 'y':
-        print("  Cancelled")
+        print("  キャンセルしました")
         return False
 
     _apply_radio_preset(_RADIO_DEFAULT_PRESET)
-    print("\n  ✅ Reset to defaults → restarting stream")
+    print("\n  ✅ デフォルト設定に戻しました → ストリームを再起動します")
     return True
 
 # ===========================================================================
@@ -2975,44 +2976,44 @@ def play_radio_stream(station):
         if _first_start:
             _first_start = False
             if _load_radio_station_preset(station):
-                print(f"   💾 Loaded saved audio settings for '{name}'")
+                print(f"   💾 「{name}」の保存済み音場設定を読み込みました")
             else:
                 _apply_radio_preset(_RADIO_DEFAULT_PRESET)
 
-        print(f"\n📻 Radio: {country} {name}")
+        print(f"\n📻 ラジオ再生: {country} {name}")
         print(f"   {description}")
         print(f"   URL: {url}")
 
         if upsampling_target_rate > 0:
             output_sample_rate = str(upsampling_target_rate)
-            print(f"   📊 Sample rate: → {upsampling_target_rate} Hz (upsampled)")
+            print(f"   📊 サンプリングレート: → {upsampling_target_rate} Hz (アップサンプリング)")
         else:
             output_sample_rate = '44100'
 
         gain_db = GAIN_PRESETS.get(current_gain_preset, 0.0)
-        print(f"   🎛️  Gain preset: {current_gain_preset} ({gain_db:+.1f} dB)")
+        print(f"   🎛️  ゲインプリセット: {current_gain_preset} ({gain_db:+.1f} dB)")
 
         loudness_filter = ''
         if loudness_normalization:
             loudness_filter = 'loudnorm=I=-16:TP=-1.5:LRA=11,'
-            print("   🔊 Loudness norm.: ON")
+            print("   🔊 音量一定化: ON")
 
         if tinnitus_reduction_mode:
-            print("   👂 Tinnitus reduction: ON")
+            print("   👂 耳鳴り低減: ON")
 
         eq_filter = get_equalizer_ffmpeg_filter()
         eq_part   = f'{eq_filter},' if eq_filter else ''
 
         _fp_label = FILTER_PRESET_LABELS.get(current_filter_preset, current_filter_preset)
         if musikverein_room_effects and air_particle_layer:
-            _space_label = 'Kanzai Full'
+            _space_label = '〔奏在〕フル'
         elif musikverein_room_effects:
-            _space_label = 'Musikverein room only'
+            _space_label = '楽友協会ルームのみ'
         elif air_particle_layer:
-            _space_label = 'Air Particle only'
+            _space_label = 'Air Particle のみ'
         else:
             _space_label = 'OFF'
-        print(f"   🏛️  Filter preset: {_fp_label}  |  Air Particle: {_space_label}")
+        print(f"   🏛️  音場プリセット: {_fp_label}  |  Air Particle: {_space_label}")
 
         # SI EQデルタが有効なら表示
         if SI_AVAILABLE and _si_instance and _si_instance.current_params:
@@ -3024,7 +3025,7 @@ def play_radio_stream(station):
                     print(f"   🎚️  SI EQ: {_eq_str[:55]}")
 
         print("=" * 60)
-        print("⏳ Connecting to stream...")
+        print("⏳ ストリームに接続中...")
 
         filter_args = _build_audio_filter_args(
             gain_db, tinnitus_reduction_mode, musikverein_room_effects,
@@ -3069,7 +3070,7 @@ def play_radio_stream(station):
             current_processes['ffmpeg'] = ffmpeg_proc
             current_processes['aplay']  = aplay_proc
 
-            print("⏳ Buffering (up to 10 s)...", end='', flush=True)
+            print("⏳ バッファリング中 (最大10秒)...", end='', flush=True)
             for i in range(20):
                 time.sleep(0.5)
                 print('.', end='', flush=True)
@@ -3081,23 +3082,23 @@ def play_radio_stream(station):
                     aplay_stderr = ''
                     try:   aplay_stderr = aplay_proc.stderr.read().decode('utf-8', errors='replace')
                     except Exception: pass
-                    print(f"\n❌ ffmpeg exited (code: {ret})")
+                    print(f"\n❌ ffmpegが終了しました (終了コード: {ret})")
                     if stderr_out:
                         for line in [l for l in stderr_out.strip().splitlines() if l.strip()][-5:]:
                             print(f"   ffmpeg: {line}")
                     if aplay_stderr:
                         for line in [l for l in aplay_stderr.strip().splitlines() if l.strip()][-3:]:
                             print(f"   aplay:  {line}")
-                    print(f"\n💡 Check the URL: {url}")
+                    print(f"\n💡 URLを確認してください: {url}")
                     return
 
             _fp_now = FILTER_PRESET_LABELS.get(current_filter_preset, current_filter_preset)
-            print(f"\n✅ Connected!")
-            print(f"🎵 Playing: {country} {name}")
+            print(f"\n✅ 接続成功！")
+            print(f"🎵 再生中: {country} {name}")
             print(f"   🏛️  {_fp_now}  |  Air Particle: {_space_label}")
-            _ctrl_hint = ("[c]Filter | [x]SI preset | [a]Air layer | [s]Save | [l]Copy station | [0]Reset | [q]Stop"
+            _ctrl_hint = ("[c]フィルター | [x]SIプリセット | [a]奏在 | [s]保存 | [l]他局コピー | [0]リセット | [q]停止"
                           if SI_AVAILABLE else
-                          "[c]Filter | [a]Air layer | [s]Save | [l]Copy station | [0]Reset | [q]Stop")
+                          "[c]フィルター | [a]奏在 | [s]保存 | [l]他局コピー | [0]リセット | [q]停止")
             print(f"   {_ctrl_hint}")
             print("=" * 60)
 
@@ -3109,7 +3110,7 @@ def play_radio_stream(station):
                     key = sys.stdin.read(1).lower()
 
                     if key == 'q':
-                        print("\n⏹  Stopping...")
+                        print("\n⏹  停止します...")
                         break
 
                     elif key in ('c', 'x', 'l', '0', 'a'):
@@ -3143,13 +3144,13 @@ def play_radio_stream(station):
                                     }
                                     _si_init_name = _fp_to_si.get(current_filter_preset, 'default')
                                     _si_instance.current_params = params_from_preset(_si_init_name)
-                                    print(f"\n  🎛️  SI init: starting with '{_si_init_name}' base preset")
+                                    print(f"\n  🎛️  SI初期化: {_si_init_name} ベースプリセットで開始します")
                                 except Exception as _e:
-                                    print(f"\n  ⚠️ SI init error: {_e}")
+                                    print(f"\n  ⚠️ SI初期化エラー: {_e}")
                             _si_do_preset_menu()
                             restart_stream = True
                         elif key == 'x' and not SI_AVAILABLE:
-                            print("\n  ⚠️ Sonia Intelligence is not available")
+                            print("\n  ⚠️ Sonia Intelligence が無効です")
                         elif key == 'l':
                             restart_stream = _copy_from_station_menu(station)
                         elif key == '0':
@@ -3157,11 +3158,11 @@ def play_radio_stream(station):
                         elif key == 'a':
                             air_particle_layer = not air_particle_layer
                             if musikverein_room_effects and air_particle_layer:
-                                _apl_new = 'Kanzai Full (Musikverein + Air Particle)'
+                                _apl_new = '〔奏在〕フル（楽友協会 + Air Particle）'
                             elif musikverein_room_effects:
-                                _apl_new = 'Musikverein room only (Air Particle OFF)'
+                                _apl_new = '楽友協会ルームのみ（Air Particle OFF）'
                             elif air_particle_layer:
-                                _apl_new = 'Air Particle only'
+                                _apl_new = 'Air Particle のみ'
                             else:
                                 _apl_new = 'OFF'
                             print(f"\n   🌿 Air Particle: {_apl_new}")
@@ -3188,18 +3189,18 @@ def play_radio_stream(station):
                         termios.tcflush(sys.stdin, termios.TCIFLUSH)
                         tty.setcbreak(sys.stdin.fileno())
                         _fp_now2 = FILTER_PRESET_LABELS.get(current_filter_preset, current_filter_preset)
-                        print(f"\n   🎵 Still playing: {country} {name}")
+                        print(f"\n   🎵 再生継続中: {country} {name}")
                         print(f"   🏛️  {_fp_now2}  |  {_ctrl_hint}")
 
             if not restart_stream:
                 if ffmpeg_proc.poll() is not None and aplay_proc.poll() is not None:
-                    print("\n⚠️  Stream disconnected")
+                    print("\n⚠️  ストリームが切断されました")
 
         except FileNotFoundError as e:
-            print(f"\n❌ Command not found: {e}")
-            print("   Install with: sudo apt install ffmpeg alsa-utils")
+            print(f"\n❌ コマンドが見つかりません: {e}")
+            print("   sudo apt install ffmpeg alsa-utils  でインストールしてください")
         except Exception as e:
-            print(f"\n❌ Radio playback error: {e}")
+            print(f"\n❌ ラジオ再生エラー: {e}")
             import traceback
             traceback.print_exc()
         finally:
@@ -3216,10 +3217,10 @@ def play_radio_stream(station):
 
             if restart_stream:
                 _new_label = FILTER_PRESET_LABELS.get(current_filter_preset, current_filter_preset)
-                print(f"\n🔄 Settings changed: {_new_label} → restarting stream...")
+                print(f"\n🔄 設定変更: {_new_label}  → ストリームを再起動します...")
                 time.sleep(0.5)
             else:
-                print("📻 Radio playback ended\n")
+                print("📻 ラジオ再生を終了しました\n")
 
 
 # ===== ★★★ AirPlay 受信モード ★★★ =====
@@ -3600,31 +3601,31 @@ def play_airplay_stream():
 
     # ── shairport-sync 確認 ───────────────────────────────────────────────
     if subprocess.run(['which', 'shairport-sync'], capture_output=True).returncode != 0:
-        print('\n❌ shairport-sync not found.')
-        input('   [Press Enter to return to menu...]')
+        print('\n❌ shairport-sync が見つかりません。')
+        input('   [Enter] でメニューに戻ります...')
         return
 
     # ── avahi-daemon 確認 ─────────────────────────────────────────────────
     if subprocess.run(['systemctl', 'is-active', '--quiet', 'avahi-daemon'],
                       capture_output=True).returncode != 0:
-        print('\n⚠️  avahi-daemon is not running.')
+        print('\n⚠️  avahi-daemon が動いていません。')
         print('   sudo systemctl start avahi-daemon')
-        if input('   Continue anyway? [y/N]: ').strip().lower() != 'y':
+        if input('   このまま続行しますか？ [y/N]: ').strip().lower() != 'y':
             return
 
     # ── ALSA ループバック確認 ─────────────────────────────────────────────
     loopback_card = _find_loopback_card()
     if loopback_card is None:
-        print('\n❌ ALSA loopback device not found.')
-        print('   Run: sudo modprobe snd-aloop  then try again.')
-        print('   To persist: add snd-aloop to /etc/modules')
-        input('   [Press Enter to return to menu...]')
+        print('\n❌ ALSA ループバックデバイスが見つかりません。')
+        print('   sudo modprobe snd-aloop  を実行してから再試行してください。')
+        print('   永続化: /etc/modules に snd-aloop を追加')
+        input('   [Enter] でメニューに戻ります...')
         return
     loopback_play = f'hw:{loopback_card},0'   # shairport-sync 出力先
     loopback_cap  = f'hw:{loopback_card},1'   # ffmpeg 入力元
 
     # ── systemd サービス版を含め全インスタンスを停止 ─────────────────────
-    print('\n🔄 Stopping existing shairport-sync (including systemd)...')
+    print('\n🔄 既存の shairport-sync を停止中（systemd 含む）...')
     _stop_shairport_all()
 
     # ポート 5000 が解放されたか確認
@@ -3634,12 +3635,12 @@ def play_airplay_stream():
             _s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             if _s.connect_ex(('127.0.0.1', 5000)) != 0:
                 break
-        print(f'   Waiting for port 5000 to be free... ({_retry+1}/5)')
+        print(f'   ポート 5000 解放待ち... ({_retry+1}/5)')
         time.sleep(1.0)
 
     # ── デバイス名 ────────────────────────────────────────────────────────
-    print(f'\n📡 AirPlay receiver name (default: {_AIRPLAY_DEVICE_NAME})')
-    custom_name = input('   Name (Enter to keep default): ').strip()
+    print(f'\n📡 AirPlay レシーバー名（デフォルト: {_AIRPLAY_DEVICE_NAME}）')
+    custom_name = input('   名前（そのままなら Enter）: ').strip()
     device_name = custom_name if custom_name else _AIRPLAY_DEVICE_NAME
     _write_shairport_conf(device_name, loopback_card=loopback_card)
 
@@ -3673,11 +3674,11 @@ def play_airplay_stream():
             _fp_label       = FILTER_PRESET_LABELS.get(current_filter_preset, current_filter_preset)
 
             if musikverein_room_effects and air_particle_layer:
-                _space_label = 'Kanzai Full'
+                _space_label = '〔奏在〕フル'
             elif musikverein_room_effects:
-                _space_label = 'Musikverein room only'
+                _space_label = '楽友協会ルームのみ'
             elif air_particle_layer:
-                _space_label = 'Air Particle only'
+                _space_label = 'Air Particle のみ'
             else:
                 _space_label = 'OFF'
 
@@ -3731,15 +3732,15 @@ def play_airplay_stream():
                 ]
                 _fmt_label = 'S32_LE raw'
 
-            print(f'\n📡 AirPlay receiver starting: "{device_name}"')
-            print(f'   Loopback: {loopback_play} → {loopback_cap} → {output_device} ({_fmt_label})')
+            print(f'\n📡 AirPlay レシーバー起動: 「{device_name}」')
+            print(f'   ループバック: {loopback_play} → {loopback_cap} → {output_device} ({_fmt_label})')
             print(f'   🏛️  {_fp_label}  |  Air Particle: {_space_label}')
-            _hint = ('[c]Filter|[x]SI preset|[a]Air layer|[h]Musikverein|[i]Image|[+/-]Vol|[q]Stop'
+            _hint = ('[c]フィルター|[x]SIプリセット|[a]奏在|[h]楽友協会|[i]画像|[+/-]音量|[q]停止'
                      if SI_AVAILABLE else
-                     '[c]Filter|[a]Air layer|[h]Musikverein|[i]Image|[+/-]Vol|[q]Stop')
+                     '[c]フィルター|[a]奏在|[h]楽友協会|[i]画像|[+/-]音量|[q]停止')
             print(f'   {_hint}')
             print('=' * 60)
-            print('⏳ Select "Qji" as AirPlay output on your iPhone / Mac...')
+            print('⏳ iPhone / Mac で「Qji」を AirPlay 出力先に選択してください...')
 
             old_settings   = None
             arecord_proc   = None
@@ -3760,15 +3761,15 @@ def play_airplay_stream():
                     # 起動確認
                     time.sleep(1.5)
                     if shairport_proc.poll() is not None:
-                        print(f'\n❌ shairport-sync failed to start (exit code: {shairport_proc.returncode})')
-                        print('   Hint: if port 5000 is in use, run:')
+                        print(f'\n❌ shairport-sync 起動失敗 (終了コード: {shairport_proc.returncode})')
+                        print('   ヒント: ポート 5000 が使用中の場合は以下を実行:')
                         print('   sudo systemctl stop shairport-sync')
                         print('   sudo systemctl disable shairport-sync')
-                        print('   Details: journalctl -u shairport-sync -n 20')
+                        print('   詳細: journalctl -u shairport-sync -n 20')
                         return
-                    print(f'\n✅ Waiting — select "{device_name}" via AirPlay and start playing')
+                    print(f'\n✅ 受信待機中 — 「{device_name}」を AirPlay で選択して再生してください')
                 else:
-                    print(f'\n🔄 Filter updated — restarting while keeping AirPlay connection...')
+                    print(f'\n🔄 フィルター更新 — AirPlay 接続を維持して再起動します...')
 
                 # arecord はループバックキャプチャ側から読む
                 _ar_log = open('/tmp/qji_arecord.log', 'w')
@@ -3811,18 +3812,18 @@ def play_airplay_stream():
                         key = sys.stdin.read(1).lower()
 
                         if key == 'q':
-                            print('\n⏹  Stopping AirPlay receiver...')
+                            print('\n⏹  AirPlay 受信を停止します...')
                             _user_quit = True
                             break
 
                         elif key in ('+', '='):
                             CURRENT_VOLUME = min(CURRENT_VOLUME + 1, 6)
-                            print(f'\n   🔊 Output gain: {CURRENT_VOLUME:+d} dB')
+                            print(f'\n   🔊 出力ゲイン: {CURRENT_VOLUME:+d} dB')
                             restart_stream = True; break
 
                         elif key == '-':
                             CURRENT_VOLUME = max(CURRENT_VOLUME - 1, -20)
-                            print(f'\n   🔊 Output gain: {CURRENT_VOLUME:+d} dB')
+                            print(f'\n   🔊 出力ゲイン: {CURRENT_VOLUME:+d} dB')
                             restart_stream = True; break
 
                         elif key == 'i':
@@ -3845,9 +3846,9 @@ def play_airplay_stream():
                                     except Exception:
                                         pass
                                 current_processes['feh'] = show_cover_image(_img)
-                                print(f'\n🖼️ Cover redisplayed: {os.path.basename(_img)}')
+                                print(f'\n🖼️ ジャケット画像再表示: {os.path.basename(_img)}')
                             else:
-                                print('\n⚠️ Cover image not found')
+                                print('\n⚠️ ジャケット画像が見つかりません')
 
                         elif key in ('c', 'x', 'a', 'h'):
                             termios.tcsetattr(sys.stdin, termios.TCSANOW, old_settings)
@@ -3871,10 +3872,10 @@ def play_airplay_stream():
                                         _si_instance.current_params = params_from_preset(
                                             _map.get(current_filter_preset, 'default'))
                                     except Exception as _e:
-                                        print(f'\n  ⚠️ SI init error: {_e}')
+                                        print(f'\n  ⚠️ SI初期化エラー: {_e}')
                                 _si_do_preset_menu(); restart_stream = True
                             elif key == 'x':
-                                print('\n  ⚠️ Sonia Intelligence is not available')
+                                print('\n  ⚠️ Sonia Intelligence が無効です')
                                 restart_stream = True
                             elif key == 'a':
                                 air_particle_layer = not air_particle_layer
@@ -3882,14 +3883,14 @@ def play_airplay_stream():
                                 restart_stream = True
                             elif key == 'h':
                                 musikverein_room_effects = not musikverein_room_effects
-                                print(f'\n   🏛️  Musikverein: {"ON" if musikverein_room_effects else "OFF"}')
+                                print(f'\n   🏛️  楽友協会: {"ON" if musikverein_room_effects else "OFF"}')
                                 restart_stream = True
                             break
 
                     # ── プロセス死活監視・自動再起動 ──────────────
                     # shairport-sync が落ちたら接続断 → 外側ループで再起動
                     if shairport_proc.poll() is not None:
-                        print('\n📡 AirPlay connection lost. Restarting...')
+                        print('\n📡 AirPlay 接続が切断されました。再起動します...')
                         _stop_shairport_all()
                         restart_stream = True
                         break
@@ -3923,7 +3924,7 @@ def play_airplay_stream():
                         current_processes['aplay']  = aplay_proc
 
                 if not restart_stream and shairport_proc.poll() is not None:
-                    print('\n📡 AirPlay connection lost. Restarting...')
+                    print('\n📡 AirPlay 接続が切断されました。再起動します...')
                     _stop_shairport_all()
                     restart_stream = True
 
@@ -3936,15 +3937,15 @@ def play_airplay_stream():
                         ('aplay',          aplay_proc),
                     ] if p and p.poll() is not None]
                     if _dead:
-                        print('\n🔍 Exited processes:')
+                        print('\n🔍 終了したプロセス:')
                         for _n, _p in _dead:
-                            print(f'   {_n}: exit code {_p.returncode}')
-                        print('   Logs: /tmp/qji_shairport.log  /tmp/qji_arecord.log  /tmp/qji_ffmpeg.log')
+                            print(f'   {_n}: 終了コード {_p.returncode}')
+                        print('   ログ: /tmp/qji_shairport.log  /tmp/qji_arecord.log  /tmp/qji_ffmpeg.log')
 
             except FileNotFoundError as e:
-                print(f'\n❌ Command not found: {e}')
+                print(f'\n❌ コマンド未発見: {e}')
             except Exception as e:
-                print(f'\n❌ AirPlay error: {e}')
+                print(f'\n❌ AirPlay エラー: {e}')
                 import traceback; traceback.print_exc()
             finally:
                 # ── ターミナル復元（確実に行う） ────────────────────────────
@@ -3978,9 +3979,9 @@ def play_airplay_stream():
             if restart_stream:
                 _lbl = FILTER_PRESET_LABELS.get(current_filter_preset, current_filter_preset)
                 if _keep_shairport:
-                    print(f'\n🔄 Filter updated: {_lbl} — restarting (AirPlay connection kept)...')
+                    print(f'\n🔄 フィルター更新: {_lbl} — AirPlay 接続を維持して再起動...')
                 else:
-                    print(f'\n🔄 Restarting: {_lbl} ...')
+                    print(f'\n🔄 再起動: {_lbl} ...')
                     _stop_shairport_all()
 
     finally:
@@ -3988,7 +3989,7 @@ def play_airplay_stream():
         _cover_stop.set()
         _cover_thread.join(timeout=3.0)
         _stop_shairport_all()
-        print('\n📡 AirPlay receiver stopped\n')
+        print('\n📡 AirPlay レシーバーを終了しました\n')
 
 
 # ===== ★★★ AirPlay 受信モード ここまで ★★★ =====
@@ -4242,29 +4243,29 @@ def play_gmediarender_stream():
 
     # ── gmediarender 確認 ─────────────────────────────────────────────────
     if subprocess.run(['which', 'gmediarender'], capture_output=True).returncode != 0:
-        print('\n❌ gmediarender not found.')
-        print('   Install with: sudo apt install gmediarender')
-        input('   [Press Enter to return to menu...]')
+        print('\n❌ gmediarender が見つかりません。')
+        print('   sudo apt install gmediarender  でインストールしてください。')
+        input('   [Enter] でメニューに戻ります...')
         return
 
     # ── ALSA ループバック確認 ─────────────────────────────────────────────
     loopback_card = _find_loopback_card()
     if loopback_card is None:
-        print('\n❌ ALSA loopback device not found.')
-        print('   Run: sudo modprobe snd-aloop  then try again.')
-        print('   To persist: add snd-aloop to /etc/modules')
-        input('   [Press Enter to return to menu...]')
+        print('\n❌ ALSA ループバックデバイスが見つかりません。')
+        print('   sudo modprobe snd-aloop  を実行してから再試行してください。')
+        print('   永続化: /etc/modules に snd-aloop を追加')
+        input('   [Enter] でメニューに戻ります...')
         return
     loopback_play = f'hw:{loopback_card},0'   # gmediarender 出力先
     loopback_cap  = f'hw:{loopback_card},1'   # arecord 入力元
 
     # ── 既存インスタンス停止 ──────────────────────────────────────────────
-    print('\n🔄 Stopping existing gmediarender...')
+    print('\n🔄 既存の gmediarender を停止中...')
     _stop_gmediarender_all()
 
     # ── デバイス名 ────────────────────────────────────────────────────────
-    print(f'\n📡 UPnP/DLNA receiver name (default: {_GMRENDER_DEVICE_NAME})')
-    custom_name = input('   Name (Enter to keep default): ').strip()
+    print(f'\n📡 UPnP/DLNA レシーバー名（デフォルト: {_GMRENDER_DEVICE_NAME}）')
+    custom_name = input('   名前（そのままなら Enter）: ').strip()
     device_name = custom_name if custom_name else _GMRENDER_DEVICE_NAME
 
     restart_stream  = True
@@ -4290,11 +4291,11 @@ def play_gmediarender_stream():
             _fp_label       = FILTER_PRESET_LABELS.get(current_filter_preset, current_filter_preset)
 
             if musikverein_room_effects and air_particle_layer:
-                _space_label = 'Kanzai Full'
+                _space_label = '〔奏在〕フル'
             elif musikverein_room_effects:
-                _space_label = 'Musikverein room only'
+                _space_label = '楽友協会ルームのみ'
             elif air_particle_layer:
-                _space_label = 'Air Particle only'
+                _space_label = 'Air Particle のみ'
             else:
                 _space_label = 'OFF'
 
@@ -4338,12 +4339,12 @@ def play_gmediarender_stream():
                 ]
                 _fmt_label = 'S32_LE raw'
 
-            print(f'\n📡 UPnP/DLNA receiver starting: "{device_name}"')
-            print(f'   Loopback: {loopback_play} → {loopback_cap} → {output_device} ({_fmt_label})')
-            print(f'   🏛️  {_fp_label}  |  Space: {_space_label}')
-            _hint = ('[c]Filter|[x]SI preset|[a]Air layer|[h]Musikverein|[+/-]Vol|[q]Stop'
+            print(f'\n📡 UPnP/DLNA レシーバー起動: 「{device_name}」')
+            print(f'   ループバック: {loopback_play} → {loopback_cap} → {output_device} ({_fmt_label})')
+            print(f'   🏛️  {_fp_label}  |  音場: {_space_label}')
+            _hint = ('[c]フィルター|[x]SIプリセット|[a]奏在|[h]楽友協会|[+/-]音量|[q]停止'
                      if SI_AVAILABLE else
-                     '[c]Filter|[a]Air layer|[h]Musikverein|[+/-]Vol|[q]Stop')
+                     '[c]フィルター|[a]奏在|[h]楽友協会|[+/-]音量|[q]停止')
             print(f'   {_hint}')
             print('=' * 60)
 
@@ -4385,13 +4386,13 @@ def play_gmediarender_stream():
                         _cover_started = True
                     time.sleep(1.5)
                     if gmrender_proc.poll() is not None:
-                        print(f'\n❌ gmediarender failed to start (exit code: {gmrender_proc.returncode})')
-                        print('   Log: /tmp/qji_gmediarender.log')
-                        input('   [Press Enter to return to menu...]')
+                        print(f'\n❌ gmediarender 起動失敗（終了コード: {gmrender_proc.returncode}）')
+                        print('   ログ: /tmp/qji_gmediarender.log')
+                        input('   [Enter] でメニューに戻ります...')
                         return
-                    print(f'\n✅ Waiting — select "{device_name}" in your UPnP controller and start playing')
+                    print(f'\n✅ 受信待機中 — UPnP コントローラーで「{device_name}」を選択して再生してください')
                 else:
-                    print(f'\n🔄 Filter updated — restarting (UPnP connection kept)...')
+                    print(f'\n🔄 フィルター更新 — UPnP 接続を維持して再起動します...')
 
                 # ── arecord ───────────────────────────────────────────────
                 _ar_log = open('/tmp/qji_gm_arecord.log', 'w')
@@ -4433,17 +4434,17 @@ def play_gmediarender_stream():
                         key = sys.stdin.read(1).lower()
 
                         if key == 'q':
-                            print('\n⏹  Stopping UPnP/DLNA receiver...')
+                            print('\n⏹  UPnP/DLNA 受信を停止します...')
                             break
 
                         elif key in ('+', '='):
                             CURRENT_VOLUME = min(CURRENT_VOLUME + 1, 6)
-                            print(f'\n   🔊 Output gain: {CURRENT_VOLUME:+d} dB')
+                            print(f'\n   🔊 出力ゲイン: {CURRENT_VOLUME:+d} dB')
                             _keep_gmrender = True; restart_stream = True; break
 
                         elif key == '-':
                             CURRENT_VOLUME = max(CURRENT_VOLUME - 1, -20)
-                            print(f'\n   🔊 Output gain: {CURRENT_VOLUME:+d} dB')
+                            print(f'\n   🔊 出力ゲイン: {CURRENT_VOLUME:+d} dB')
                             _keep_gmrender = True; restart_stream = True; break
 
                         elif key in ('c', 'x', 'a', 'h'):
@@ -4460,12 +4461,12 @@ def play_gmediarender_stream():
                                 print(f'\n   🌿 Air Particle: {"ON" if air_particle_layer else "OFF"}')
                             elif key == 'h':
                                 musikverein_room_effects = not musikverein_room_effects
-                                print(f'\n   🏛️  Musikverein: {"ON" if musikverein_room_effects else "OFF"}')
+                                print(f'\n   🏛️  楽友協会: {"ON" if musikverein_room_effects else "OFF"}')
                             break
 
                 # ── gmediarender 接続断検出 ────────────────────────────────
                 if not restart_stream and gmrender_proc.poll() is not None:
-                    print('\n📡 gmediarender exited. Restarting...')
+                    print('\n📡 gmediarender が終了しました。再起動します...')
                     gmrender_proc = None
                     restart_stream = True
 
@@ -4478,15 +4479,15 @@ def play_gmediarender_stream():
                         ('aplay',        aplay_proc),
                     ] if p and p.poll() is not None]
                     if _dead:
-                        print('\n🔍 Exited processes:')
+                        print('\n🔍 終了したプロセス:')
                         for _n, _p in _dead:
-                            print(f'   {_n}: exit code {_p.returncode}')
-                        print('   Logs: /tmp/qji_gmediarender.log  /tmp/qji_gm_arecord.log  /tmp/qji_gm_ffmpeg.log')
+                            print(f'   {_n}: 終了コード {_p.returncode}')
+                        print('   ログ: /tmp/qji_gmediarender.log  /tmp/qji_gm_arecord.log  /tmp/qji_gm_ffmpeg.log')
 
             except FileNotFoundError as e:
-                print(f'\n❌ Command not found: {e}')
+                print(f'\n❌ コマンド未発見: {e}')
             except Exception as e:
-                print(f'\n❌ UPnP/DLNA error: {e}')
+                print(f'\n❌ UPnP/DLNA エラー: {e}')
                 import traceback; traceback.print_exc()
             finally:
                 if old_settings is not None:
@@ -4526,23 +4527,23 @@ def play_gmediarender_stream():
                                 _si_instance.current_params = params_from_preset(
                                     _map.get(current_filter_preset, 'default'))
                             except Exception as _e:
-                                print(f'\n  ⚠️ SI init error: {_e}')
+                                print(f'\n  ⚠️ SI初期化エラー: {_e}')
                         _si_do_preset_menu()
                     else:
-                        print('\n  ⚠️ Sonia Intelligence is not available')
+                        print('\n  ⚠️ Sonia Intelligence が無効です')
                 _pending_action = None
 
                 _lbl = FILTER_PRESET_LABELS.get(current_filter_preset, current_filter_preset)
                 if _keep_gmrender:
-                    print(f'\n🔄 Filter updated: {_lbl} — restarting (UPnP connection kept)...')
+                    print(f'\n🔄 フィルター更新: {_lbl} — UPnP 接続を維持して再起動...')
                 else:
-                    print(f'\n🔄 Restarting: {_lbl} ...')
+                    print(f'\n🔄 再起動: {_lbl} ...')
                     _stop_gmediarender_all()
 
     finally:
         _cover_stop.set()          # カバーアートポーラー停止
         _stop_gmediarender_all()
-        print('\n📡 UPnP/DLNA receiver stopped\n')
+        print('\n📡 UPnP/DLNA レシーバーを終了しました\n')
 
 
 # ===== ★★★ UPnP/DLNA レシーバーモード ここまで ★★★ =====
@@ -4551,15 +4552,15 @@ def play_gmediarender_stream():
 def radio_menu():
     """ラジオステーション選択メニュー"""
     while True:
-        print("\n📻 Radio stations")
+        print("\n📻 ラジオステーション")
         print("=" * 60)
         for i, station in enumerate(RADIO_STATIONS, 1):
             country = station.get('country', '')
             print(f"  {i}. {country} {station['name']}  —  {station.get('description', '')}")
-        print("  0. Return to main menu")
+        print("  0. メインメニューに戻る")
         print("=" * 60)
 
-        choice = input("Select (number): ").strip()
+        choice = input("選択 (番号): ").strip()
 
         if choice == '0' or choice.lower() == 'q':
             break
@@ -4570,9 +4571,9 @@ def radio_menu():
                 play_radio_stream(RADIO_STATIONS[idx])
                 # 再生終了後もメニューに留まる
             else:
-                print("⚠️ Invalid number")
+                print("⚠️ 無効な番号です")
         else:
-            print("⚠️ Please enter a number")
+            print("⚠️ 数字を入力してください")
 
 
 def get_mood_color(mood):
@@ -4746,7 +4747,7 @@ def voice_input_listener_thread(timeout_seconds=15, listen_for_tempo=False, list
     if not VOICE_RECOGNITION_AVAILABLE:
         return
     if not os.path.exists(VOSK_MODEL_PATH):
-        print("⚠️ Vosk model not found:", VOSK_MODEL_PATH)
+        print("⚠️ Voskモデルが見つかりません:", VOSK_MODEL_PATH)
         return
     voice_input_result = None
     voice_recognition_active = True
@@ -4789,9 +4790,9 @@ def voice_input_listener_thread(timeout_seconds=15, listen_for_tempo=False, list
     start_time = time.time()
     try:
         if device_id is not None:
-            print(f"🎤 Using device {device_id}, sample rate: {samplerate}")
+            print(f"🎤 デバイス {device_id} を使用、サンプルレート: {samplerate}")
         else:
-            print("🎤 Using default mic, sample rate: {samplerate}")
+            print("🎤 デフォルトマイクを使用、サンプルレート: {samplerate}")
 
         # RawInputStream を使う（生データをそのまま Vosk に渡す）
         with sd.RawInputStream(samplerate=samplerate, blocksize=8000, dtype='int16',
@@ -4808,7 +4809,7 @@ def voice_input_listener_thread(timeout_seconds=15, listen_for_tempo=False, list
                     result = json.loads(rec.Result())
                     command = result.get("text", "").strip()
                     if command:
-                        print(f"🎤 Voice recognised: {command}")
+                        print(f"🎤 音声認識: {command}")
                         if listen_for_tempo:
                             tempo = extract_tempo_from_speech(command)
                             if tempo:
@@ -4828,8 +4829,8 @@ def voice_input_listener_thread(timeout_seconds=15, listen_for_tempo=False, list
                                 input_received = True
                                 break
     except Exception as e:
-        print(f"Voice recognition error: {e}")
-        print("💡 Hint: try specifying the device ID with --mic-device.")
+        print(f"音声認識エラー: {e}")
+        print("💡 ヒント: デバイスID (--mic-device) を明示指定して試してください。")
     finally:
         voice_recognition_active = False
 
@@ -4841,11 +4842,11 @@ def keyboard_input_listener_thread(listen_for_tempo=False, listen_for_keyword=Fa
         if prompt:
             print(prompt, end='', flush=True)
         elif listen_for_tempo:
-            print("⌨️ Enter tempo (50-200) and press Enter: ", end='', flush=True)
+            print("⌨️ テンポ(50-200)を入力してEnterを押してください: ", end='', flush=True)
         elif listen_for_keyword:
-            print("⌨️ Enter search keyword and press Enter: ", end='', flush=True)
+            print("⌨️ 検索キーワードを入力してEnterを押してください: ", end='', flush=True)
         else:
-            print("⌨️ Enter a number and press Enter: ", end='', flush=True)
+            print("⌨️ 数字を入力してEnterを押してください: ", end='', flush=True)
 
         while not input_received:
             if select.select([sys.stdin], [], [], 0.1)[0]:
@@ -4858,33 +4859,33 @@ def keyboard_input_listener_thread(listen_for_tempo=False, listen_for_keyword=Fa
                         if line.isdigit():
                             number = int(line)
                             if number < 50 or number > 200:
-                                print(f"⚠ Tempo must be 50-200 (entered: {number})")
-                                print("⌨️ Enter tempo (50-200) and press Enter: ", end='', flush=True)
+                                print(f"⚠ テンポは50-200の範囲で入力してください(入力値: {number})")
+                                print("⌨️ テンポ(50-200)を入力してEnterを押してください: ", end='', flush=True)
                                 continue
                             voice_input_result = number
                             input_received = True
-                            print(f"⌨️ Keyboard input: {line}")
+                            print(f"⌨️ キーボード入力: {line}")
                             break
                         else:
-                            print(f"⚠ Please enter a number (entered: '{line}')")
-                            print("⌨️ Enter tempo (50-200) and press Enter: ", end='', flush=True)
+                            print(f"⚠ 数字を入力してください(入力値: '{line}')")
+                            print("⌨️ テンポ(50-200)を入力してEnterを押してください: ", end='', flush=True)
                     elif listen_for_keyword:
                         voice_input_result = line
                         input_received = True
-                        print(f"⌨️ Keyboard input: {line}")
+                        print(f"⌨️ キーボード入力: {line}")
                         break
                     else:
                         if line.isdigit():
                             voice_input_result = int(line)
                             input_received = True
-                            print(f"⌨️ Keyboard input: {line}")
+                            print(f"⌨️ キーボード入力: {line}")
                             break
                         else:
-                            print(f"⚠ Please enter a number (entered: '{line}')")
+                            print(f"⚠ 数字を入力してください(入力値: '{line}')")
                             if prompt:
                                 print(prompt, end='', flush=True)
                             else:
-                                print("⌨️ Enter a number and press Enter: ", end='', flush=True)
+                                print("⌨️ 数字を入力してEnterを押してください: ", end='', flush=True)
                 except (ValueError, EOFError):
                     continue
             if input_received:
@@ -4896,11 +4897,11 @@ def keyboard_input_listener_thread(listen_for_tempo=False, listen_for_keyword=Fa
 def get_tempo_input(timeout_seconds=15):
     """テンポの音声・キーボード同時入力"""
     global voice_input_result, voice_input_waiting, input_received
-    print("\n🎯 Enter tempo (BPM) by voice or keyboard")
+    print("\n🎯 テンポ(BPM)を音声またはキーボードで入力してください")
     if VOICE_RECOGNITION_AVAILABLE and os.path.exists(VOSK_MODEL_PATH):
-        print("   🎤 Voice: say the tempo (e.g. '120', 'fast', 'slow')")
-    print("   ⌨️ Keyboard: type a number (50-200) and press Enter")
-    print(f"   ⏱️ Timeout: {timeout_seconds}s")
+        print("   🎤 音声: テンポを話してください(例:「120」、「はやい」、「おそい」)")
+    print("   ⌨️ キーボード: テンポ数値(50-200)を入力してEnterキーを押してください")
+    print(f"   ⏱️ タイムアウト: {timeout_seconds}秒")
 
     voice_input_result = None
     voice_input_waiting = True
@@ -4913,7 +4914,7 @@ def get_tempo_input(timeout_seconds=15):
         voice_thread.daemon = True
         voice_thread.start()
         threads.append(voice_thread)
-        print("🎤 Voice recognition started...")
+        print("🎤 音声認識開始...")
 
     keyboard_thread = threading.Thread(target=keyboard_input_listener_thread, args=(True, False, ""))
     keyboard_thread.daemon = True
@@ -4929,13 +4930,13 @@ def get_tempo_input(timeout_seconds=15):
     time.sleep(0.2)
 
     if voice_input_result is not None and 50 <= voice_input_result <= 200:
-        print(f"✅ Tempo entered: {voice_input_result} BPM")
+        print(f"✅ テンポ入力結果: {voice_input_result} BPM")
         return voice_input_result
     elif voice_input_result is not None:
-        print(f"⚠ Invalid tempo (must be 50-200)")
+        print(f"⚠ 無効なテンポです(50-200の範囲で入力してください)")
         return None
     else:
-        print("⏰ Timeout or invalid input")
+        print("⏰ タイムアウトまたは無効な入力")
         return None
 
 
@@ -4952,11 +4953,11 @@ def get_keyword_input(mode='composer', timeout_seconds=20):
     }
     mode_name = mode_names.get(mode, mode)
 
-    print(f"\n🔍 Enter {mode_name} by voice or keyboard")
+    print(f"\n🔍 {mode_name}を音声またはキーボードで入力してください")
     if VOICE_RECOGNITION_AVAILABLE and os.path.exists(VOSK_MODEL_PATH):
-        print(f"   🎤 Voice: say the {mode_name} name (e.g. 'Beethoven', 'Berlin')")
-    print(f"   ⌨️ Keyboard: type the {mode_name} name and press Enter")
-    print(f"   ⏱️ Timeout: {timeout_seconds}s")
+        print(f"   🎤 音声: {mode_name}名を話してください(例:「ベートーヴェン」、「ベルリン」)")
+    print(f"   ⌨️ キーボード: {mode_name}名を入力してEnterキーを押してください")
+    print(f"   ⏱️ タイムアウト: {timeout_seconds}秒")
 
     voice_input_result = None
     voice_input_waiting = True
@@ -4969,7 +4970,7 @@ def get_keyword_input(mode='composer', timeout_seconds=20):
         voice_thread.daemon = True
         voice_thread.start()
         threads.append(voice_thread)
-        print("🎤 Voice recognition started...")
+        print("🎤 音声認識開始...")
 
     keyboard_thread = threading.Thread(target=keyboard_input_listener_thread,
                                        args=(False, True, ""))
@@ -4986,10 +4987,10 @@ def get_keyword_input(mode='composer', timeout_seconds=20):
     time.sleep(0.2)
 
     if voice_input_result and isinstance(voice_input_result, str):
-        print(f"✅ {mode_name} entered: {voice_input_result}")
+        print(f"✅ {mode_name}入力結果: {voice_input_result}")
         return voice_input_result
     else:
-        print("⏰ Timeout or invalid input")
+        print("⏰ タイムアウトまたは無効な入力")
         return None
     # -*- coding: utf-8 -*-
 """
@@ -5172,7 +5173,7 @@ def interactive_search_with_curses(options, mode='composer'):
     mode_name = mode_names.get(mode, mode)
     
     if not options:
-        print(f"⚠️ No {mode_name} data in database")
+        print(f"⚠️ {mode_name}データがありません")
         return None
     
     try:
@@ -5180,10 +5181,10 @@ def interactive_search_with_curses(options, mode='composer'):
         print("\n")
         return result
     except KeyboardInterrupt:
-        print("\n⚠️ Search cancelled")
+        print("\n⚠️ 検索をキャンセルしました")
         return None
     except Exception as e:
-        print(f"\n⚠️ Search UI error: {e}")
+        print(f"\n⚠️ 検索UIエラー: {e}")
         return None
 
 
@@ -5456,18 +5457,18 @@ def get_tracks_by_keyword(keyword, limit=200, debug=False):
             tracks.append(track)
             
             if debug and len(tracks) <= 5:
-                print(f"\n  [Match {len(tracks)}] {match_reason}:")
-                print(f"    Title: {track.get('title', 'N/A')}")
-                print(f"    Artist: {track.get('artist', 'N/A')}")
-                print(f"    Filename: {filename}")
+                print(f"\n  [マッチ {len(tracks)}] {match_reason}:")
+                print(f"    タイトル: {track.get('title', 'N/A')}")
+                print(f"    アーティスト: {track.get('artist', 'N/A')}")
+                print(f"    ファイル名: {filename}")
 
     if debug:
-        print(f"\n🔍 Search stats (keyword: '{keyword}'):")
-        print(f"  Total matches: {len(tracks)}")
-        print(f"  By field:")
+        print(f"\n🔍 検索結果統計 (キーワード: '{keyword}'):")
+        print(f"  総マッチ数: {len(tracks)}曲")
+        print(f"  フィールド別:")
         for field, count in match_fields.items():
             if count > 0:
-                print(f"    {field}: {count}")
+                print(f"    {field}: {count}件")
 
     random.shuffle(tracks)
     return tracks[:limit]
@@ -5477,7 +5478,7 @@ def get_tracks_by_mood_group(group_name, limit=200):
     """ムードグループで検索"""
     moods = MOOD_GROUPS.get(group_name, [])
     if not moods:
-        print(f"⚠️ Unknown mood group: {group_name}")
+        print(f"⚠️ 未知のムードグループ: {group_name}")
         return []
     
     all_tracks = []
@@ -5583,7 +5584,7 @@ def show_mood_statistics():
     """データベース内のムード分布を表示"""
     db = safe_load_database()
     if not db:
-        print("⚠️ Could not load database")
+        print("⚠️ データベースが読み込めません")
         return
     
     mood_count = {}
@@ -5593,7 +5594,7 @@ def show_mood_statistics():
     
     total = len(db)
     print("\n" + "="*60)
-    print("📊 Mood distribution statistics")
+    print("📊 ムード分布統計")
     print("="*60)
     
     mood_names = {
@@ -5613,10 +5614,10 @@ def show_mood_statistics():
         bar_length = int(percentage / 2)
         bar = '█' * bar_length
         color, reset = get_mood_color(mood)
-        print(f"  {mood_display:20} {color}{bar}{reset} {count:4} tracks ({percentage:5.1f}%)")
+        print(f"  {mood_display:20} {color}{bar}{reset} {count:4}曲 ({percentage:5.1f}%)")
     
     print("="*60)
-    print(f"Total: {total} tracks\n")
+    print(f"合計: {total}曲\n")
 
 
 # ===== ジャケット画像選曲機能 =====
@@ -5625,7 +5626,7 @@ def collect_album_covers(tracks, limit=500):
     """トラックリストからアルバムジャケット画像を収集（厳格版）"""
     folder_images = {}
     
-    print(f"🔍 Collecting cover art from {len(tracks)} tracks...")
+    print(f"🔍 {len(tracks)}曲からジャケット画像を収集中...")
     
     # 渡されたトラックだけを使用
     for track in tracks:
@@ -5653,14 +5654,14 @@ def collect_album_covers(tracks, limit=500):
     # 曲数の多い順にソート
     result.sort(key=lambda x: x[2], reverse=True)
     
-    print(f"✅ Found {len(result)} album folder(s)")
+    print(f"✅ {len(result)}個のアルバムフォルダを発見")
     
     # デバッグ：最初の5個を表示
     if result:
-        print("📁 Discovered albums (top 5):")
+        print("📁 発見されたアルバム（上位5個）:")
         for i, (img, folder, count) in enumerate(result[:5], 1):
             folder_name = os.path.basename(folder)
-            print(f"   {i}. {folder_name[:50]} ({count} tracks)")
+            print(f"   {i}. {folder_name[:50]} ({count}曲)")
     
     return result[:limit]
 
@@ -5675,7 +5676,7 @@ def clear_browser_cache():
         import os
         import glob
         
-        print("\n🧹 Clearing browser cache...")
+        print("\n🧹 ブラウザキャッシュをクリア中...")
         
         # Chromeプロセスを全て終了
         subprocess.run(['pkill', '-f', 'chrome'], stderr=subprocess.DEVNULL)
@@ -5706,23 +5707,23 @@ def clear_browser_cache():
             if os.path.exists(cache_dir):
                 try:
                     shutil.rmtree(cache_dir)
-                    print(f"  ✓ Deleted: {cache_dir}")
+                    print(f"  ✓ 削除: {cache_dir}")
                 except Exception as e:
-                    print(f"  ⚠️ Failed to delete {cache_dir}: {e}")
+                    print(f"  ⚠️ {cache_dir} 削除失敗: {e}")
         
         # 履歴ファイルを削除
         for hist_file in history_files:
             if os.path.exists(hist_file):
                 try:
                     os.remove(hist_file)
-                    print(f"  ✓ Deleted: {hist_file}")
+                    print(f"  ✓ 削除: {hist_file}")
                 except Exception as e:
-                    print(f"  ⚠️ Failed to delete {hist_file}: {e}")
+                    print(f"  ⚠️ {hist_file} 削除失敗: {e}")
         
-        print("✅ Browser cache cleared")
+        print("✅ ブラウザキャッシュクリア完了")
         
     except Exception as e:
-        print(f"⚠️ Cache clear error: {e}")
+        print(f"⚠️ キャッシュクリアエラー: {e}")
 
 
 def display_album_covers_with_feh(album_covers, keep_browser_open=False, existing_server=None):
@@ -5730,7 +5731,7 @@ def display_album_covers_with_feh(album_covers, keep_browser_open=False, existin
     global web_selection_result, web_server_running, web_server_instance, next_album_selection
     
     if not album_covers:
-        print("⚠️ No cover art available to display")
+        print("⚠️ 表示できるジャケット画像がありません")
         return None, None
     
     # 一時ディレクトリを作成
@@ -5749,7 +5750,7 @@ def display_album_covers_with_feh(album_covers, keep_browser_open=False, existin
         pass
     
     try:
-        print(f"\n🖼️  Preparing {len(album_covers)} album covers...")
+        print(f"\n🖼️  {len(album_covers)}枚のアルバムジャケットを準備中...")
         
         # 画像をコピー
         image_files = []
@@ -5973,24 +5974,24 @@ def display_album_covers_with_feh(album_covers, keep_browser_open=False, existin
 </head>
 <body>
     <div class="header">
-        <h1>🎵 Album Cover Browser</h1>
-        <p>Click an album cover to play it</p>
-        <p>Right-click an image to open its folder</p>
-        <p>全 """ + str(len(album_covers)) + """ albums</p>
+        <h1>🎵 アルバムジャケット選択画面</h1>
+        <p>お好きなアルバムのジャケット画像をクリックしてください</p>
+        <p>画像を右クリックするとフォルダーを開くことができます</p>
+        <p>全 """ + str(len(album_covers)) + """ アルバム</p>
     </div>
-    <div id="status" class="status">Waiting...</div>
+    <div id="status" class="status">選択中...</div>
     
     <!-- キューパネル -->
     <div class="queue-panel">
-        <h3>📋 Playback Queue</h3>
-        <div id="queueList"><div class="queue-empty">Click to add</div></div>
-        <button class="queue-clear" onclick="clearQueue()">🗑 Clear queue</button>
+        <h3>📋 再生キュー</h3>
+        <div id="queueList"><div class="queue-empty">クリックで追加</div></div>
+        <button class="queue-clear" onclick="clearQueue()">🗑 キューをクリア</button>
     </div>
     
     <!-- コンテキストメニュー -->
     <div id="contextMenu" class="context-menu">
         <div class="context-menu-item" onclick="openFolder()">
-            <i>📁</i>Open folder
+            <i>📁</i>フォルダーを開く
         </div>
     </div>
     
@@ -6003,9 +6004,9 @@ def display_album_covers_with_feh(album_covers, keep_browser_open=False, existin
             escaped_folder = folder_path.replace("'", "\\'")
             html_content += f"""
         <div class="album" id="album-{i}" onclick="selectAlbum({i}, this)" data-folder="{escaped_folder}" data-name="{folder_name[:40]}">
-            <img src="{filename}{cache_buster}" alt="Album {i}">
+            <img src="{filename}{cache_buster}" alt="アルバム {i}">
             <div class="album-number">{i}</div>
-            <div class="album-info">{track_count} tracks</div>
+            <div class="album-info">{track_count} トラック</div>
             <div class="played-mark">✓</div>
         </div>
 """
@@ -6020,13 +6021,13 @@ def display_album_covers_with_feh(album_covers, keep_browser_open=False, existin
         function renderQueue() {
             const el = document.getElementById('queueList');
             if (queueList.length === 0) {
-                el.innerHTML = '<div class="queue-empty">Click to add</div>';
+                el.innerHTML = '<div class="queue-empty">クリックで追加</div>';
                 return;
             }
             el.innerHTML = queueList.map((item, idx) =>
                 `<div class="queue-item">
                     <span class="queue-pos">${idx + 1}</span>
-                    <span>${item.name || ('Album ' + item.num)}</span>
+                    <span>${item.name || ('アルバム ' + item.num)}</span>
                 </div>`
             ).join('');
         }
@@ -6037,7 +6038,7 @@ def display_album_covers_with_feh(album_covers, keep_browser_open=False, existin
         }
         
         function selectAlbum(number, el) {
-            const name = el ? el.getAttribute('data-name') : ('Album ' + number);
+            const name = el ? el.getAttribute('data-name') : ('アルバム ' + number);
             
             // キューに追加
             queueList.push({ num: number, name: name });
@@ -6045,7 +6046,7 @@ def display_album_covers_with_feh(album_covers, keep_browser_open=False, existin
             
             // ステータス表示
             document.getElementById('status').textContent =
-                'Added album ' + number + ' to queue (total: ' + queueList.length + ')';
+                'アルバム ' + number + ' をキューに追加しました (合計: ' + queueList.length + '件)';
             document.getElementById('status').classList.add('show');
             
             // 選択ハイライト
@@ -6065,7 +6066,7 @@ def display_album_covers_with_feh(album_covers, keep_browser_open=False, existin
             
             setTimeout(function() {
                 document.getElementById('status').textContent =
-                'Queue: ' + queueList.length + ' — click more to add';
+                'キュー: ' + queueList.length + '件 — 続けてクリックで追加できます';
             }, 2000);
         }
         
@@ -6092,7 +6093,7 @@ def display_album_covers_with_feh(album_covers, keep_browser_open=False, existin
             if (currentContextFolder) {
                 fetch('open_folder.php?path=' + encodeURIComponent(currentContextFolder), {method: 'POST'})
                     .then(response => {
-                        document.getElementById('status').textContent = 'Folder opened';
+                        document.getElementById('status').textContent = 'フォルダーを開きました';
                         document.getElementById('status').classList.add('show');
                         setTimeout(function() {
                             document.getElementById('status').classList.remove('show');
@@ -6146,7 +6147,7 @@ def display_album_covers_with_feh(album_covers, keep_browser_open=False, existin
                             next_album_selection.append(num)
                             web_selection_result = num  # 互換性のため残す
                             q_len = len(next_album_selection)
-                            print(f"\n🖱️ Album {num} added to queue via browser (queue: {q_len})")
+                            print(f"\n🖱️ ブラウザでアルバム {num} をキューに追加しました (キュー: {q_len}件)")
                     
                     # フォルダーを開く処理
                     elif 'open_folder.php' in self.path:
@@ -6155,7 +6156,7 @@ def display_album_covers_with_feh(album_covers, keep_browser_open=False, existin
                         params = urllib.parse.parse_qs(query)
                         if 'path' in params:
                             folder_path = params['path'][0]
-                            print(f"\n📁 Opening folder: {folder_path}")
+                            print(f"\n📁 フォルダーを開きます: {folder_path}")
                             try:
                                 # ファイルマネージャーでフォルダーを開く
                                 if os.path.exists(folder_path):
@@ -6165,12 +6166,12 @@ def display_album_covers_with_feh(album_covers, keep_browser_open=False, existin
                                             subprocess.Popen([fm, folder_path], 
                                                            stdout=subprocess.DEVNULL, 
                                                            stderr=subprocess.DEVNULL)
-                                            print(f"✅ Folder opened with {fm}")
+                                            print(f"✅ {fm}でフォルダーを開きました")
                                             break
                                 else:
-                                    print(f"⚠️ Folder not found: {folder_path}")
+                                    print(f"⚠️ フォルダーが存在しません: {folder_path}")
                             except Exception as e:
-                                print(f"⚠️ Could not open folder: {e}")
+                                print(f"⚠️ フォルダーを開けませんでした: {e}")
                     
                     self.send_response(200)
                     self.end_headers()
@@ -6195,7 +6196,7 @@ def display_album_covers_with_feh(album_covers, keep_browser_open=False, existin
                             httpd.handle_request()
                 except OSError as e:
                     if e.errno == 98:  # Address already in use
-                        print(f"⚠️ Port {server_port} is already in use — reusing existing server.")
+                        print(f"⚠️ ポート {server_port} は既に使用中です。既存のサーバーを使用します。")
                     else:
                         raise
             
@@ -6203,22 +6204,22 @@ def display_album_covers_with_feh(album_covers, keep_browser_open=False, existin
             server_thread.start()
             time.sleep(0.5)  # サーバー起動待ち
         else:
-            print("♻️ Reusing existing server")
+            print("♻️ 既存のサーバーを再利用します")
         
         print("=" * 60)
-        print("📋 Album list (number and track count):")
+        print("📋 アルバム一覧（番号とトラック数）:")
         for i, (image_path, folder, track_count) in enumerate(album_covers, 1):
             folder_name = os.path.basename(folder)
-            print(f"  {i:3d}. {folder_name[:60]:60} ({track_count} tracks)")
+            print(f"  {i:3d}. {folder_name[:60]:60} ({track_count} トラック)")
         
         print("\n" + "=" * 60)
-        print(f"💡 Open in browser: http://localhost:{server_port}/gallery.html")
+        print(f"💡 ブラウザで開くURL: http://localhost:{server_port}/gallery.html")
         print("=" * 60)
-        print("🎵 How to use:")
-        print("   1. Open the URL above in a browser")
-        print("   2. Click a cover art image → playback starts immediately")
-        print("   3. Or type a number directly in this terminal")
-        print("   4. Enter 'q' or 'back' to exit")
+        print("🎵 操作方法:")
+        print("   1. 上記のURLをブラウザで開く")
+        print("   2. お好きなジャケット画像をクリック → 即座に再生開始")
+        print("   3. またはこのターミナルに番号を直接入力")
+        print("   4. 終了する場合は 'q' または 'back' を入力")
         print("=" * 60)
         
         browser_url = f"http://localhost:{server_port}/gallery.html"
@@ -6244,17 +6245,17 @@ def display_album_covers_with_feh(album_covers, keep_browser_open=False, existin
                             stderr=subprocess.DEVNULL,
                             start_new_session=True
                         )
-                        print(f"\n🌐 Browser ({browser}) opened with dedicated profile")
+                        print(f"\n🌐 ブラウザ({browser})を専用プロファイルで開きました")
                         break
                     except Exception as e:
-                        print(f"⚠️ Failed to launch {browser}: {e}")
+                        print(f"⚠️ {browser}の起動失敗: {e}")
                         continue
         
         if not browser_process and not keep_browser_open:
-            print("\n💡 Browser did not open automatically")
-            print(f"   Open manually: {browser_url}")
+            print("\n💡 ブラウザが自動起動しませんでした")
+            print(f"   手動で開く: {browser_url}")
         
-        print("\n⏳ Waiting for a click or number input...")
+        print("\n⏳ クリックまたは番号入力を待機中...")
         
         selected_index = None
         
@@ -6266,13 +6267,13 @@ def display_album_covers_with_feh(album_covers, keep_browser_open=False, existin
                     if 0 <= candidate < len(album_covers):
                         selected_folder = album_covers[candidate][1]
                         remaining = len(next_album_selection)
-                        print(f"✅ Browser selected: {os.path.basename(selected_folder)} ({album_covers[candidate][2]} tracks)")
+                        print(f"✅ ブラウザで選択: {os.path.basename(selected_folder)} ({album_covers[candidate][2]} トラック)")
                         if remaining > 0:
-                            print(f"   📋 {remaining} item(s) in queue")
+                            print(f"   📋 キューに {remaining} 件追加済み")
                         selected_index = candidate
                         break
                     else:
-                        print(f"⚠️ Invalid selection: {num}")
+                        print(f"⚠️ 無効な選択: {num}")
                         selected_index = None
                 
                 if select.select([sys.stdin], [], [], 0.1)[0]:
@@ -6280,7 +6281,7 @@ def display_album_covers_with_feh(album_covers, keep_browser_open=False, existin
                         choice = sys.stdin.readline().strip()
                         
                         if choice.lower() == 'q' or choice.lower() == 'back':
-                            print("⚠️ Selection cancelled")
+                            print("⚠️ 選択をキャンセルしました")
                             break
                         
                         if choice.isdigit():
@@ -6288,16 +6289,16 @@ def display_album_covers_with_feh(album_covers, keep_browser_open=False, existin
                             if 0 <= idx < len(album_covers):
                                 selected_index = idx
                                 selected_folder = album_covers[idx][1]
-                                print(f"✅ Selected by number: {os.path.basename(selected_folder)} ({album_covers[idx][2]} tracks)")
+                                print(f"✅ 番号で選択: {os.path.basename(selected_folder)} ({album_covers[idx][2]} トラック)")
                                 break
                             else:
-                                print(f"⚠️ Enter a number from 1 to {len(album_covers)}")
+                                print(f"⚠️ 1から{len(album_covers)}の範囲で入力してください")
                         else:
                             if choice:
-                                print("⚠️ Please enter a number")
+                                print("⚠️ 数字を入力してください")
                     
                     except (EOFError, KeyboardInterrupt):
-                        print("\n⚠️ Selection cancelled")
+                        print("\n⚠️ 選択をキャンセルしました")
                         break
                 
                 time.sleep(0.1)
@@ -6308,7 +6309,7 @@ def display_album_covers_with_feh(album_covers, keep_browser_open=False, existin
         return selected_index, browser_process
     
     except Exception as e:
-        print(f"⚠️ Error: {e}")
+        print(f"⚠️ エラー: {e}")
         import traceback
         traceback.print_exc()
         return None, None
@@ -6351,7 +6352,7 @@ def get_recently_added_folders(n=10):
         if not dominated:
             search_dirs.append(d)
 
-    print(f"  📂 Scanning {len(search_dirs)} drive(s)")
+    print(f"  📂 スキャン対象: {len(search_dirs)}ドライブ")
 
     # Phase1: フォルダmtime(stat1回)だけで候補を絞る
     PHASE1_CANDIDATE_MULT = 8
@@ -6375,7 +6376,7 @@ def get_recently_added_folders(n=10):
     )
     top_candidate_folders = [f for f, _ in sorted_by_dir_mtime[:n * PHASE1_CANDIDATE_MULT]]
 
-    print(f"  🔍 Phase 1 candidates: {len(top_candidate_folders)} folder(s) → Phase 2 detail check")
+    print(f"  🔍 Phase1候補: {len(top_candidate_folders)}フォルダ → Phase2で詳細チェック")
 
     # Phase2: 候補フォルダのみファイルctimeを確認
     folder_ctimes = {}
@@ -6400,7 +6401,7 @@ def get_recently_added_folders(n=10):
             folder_ctimes[folder] = newest_ctime
 
     if not folder_ctimes:
-        print("  ⚠️ Phase 2 found no music folders — falling back to full scan...")
+        print("  ⚠️ Phase2で音楽フォルダが見つからず。全体スキャンにフォールバック...")
         for search_dir in search_dirs:
             for root, dirs, files in os.walk(search_dir):
                 newest_ctime = 0.0
@@ -6432,17 +6433,17 @@ def select_recently_added_jacket_mode(n=10):
     """
     global web_server_running, web_server_instance, web_selection_result, next_album_selection
 
-    print(f"\n🆕  Recently added (latest {n} sets) — cover-art browser")
+    print(f"\n🆕  最近追加された音源 (最新{n}セット) ジャケット選曲")
     print("=" * 60)
-    print(f"📂 Searching for recently added album folders...")
+    print(f"📂 最近追加されたアルバムフォルダを検索中...")
 
     recent_folders = get_recently_added_folders(n=n)
 
     if not recent_folders:
-        print("⚠️ No recently added folders found")
+        print("⚠️ 最近追加されたフォルダが見つかりませんでした")
         return
 
-    print(f"✅ Found {len(recent_folders)} recent folder(s):")
+    print(f"✅ {len(recent_folders)}件の最新フォルダを発見:")
     for i, (folder, mtime) in enumerate(recent_folders, 1):
         dt_str = time.strftime('%Y-%m-%d %H:%M', time.localtime(mtime))
         print(f"   {i:2d}. [{dt_str}]  {os.path.basename(folder)}")
@@ -6454,13 +6455,13 @@ def select_recently_added_jacket_mode(n=10):
         all_tracks.extend(folder_tracks)
 
     if not all_tracks:
-        print("⚠️ No music files found")
+        print("⚠️ 音楽ファイルが見つかりませんでした")
         return
 
     album_covers = collect_album_covers(all_tracks, limit=n)
 
     if not album_covers:
-        print("⚠️ No cover art found (the folder may not contain image files)")
+        print("⚠️ ジャケット画像が見つかりませんでした（フォルダに画像ファイルがない可能性があります）")
         return
 
     # ===== 以下はジャケットモードと同じループ =====
@@ -6493,7 +6494,7 @@ def select_recently_added_jacket_mode(n=10):
             browser_process = browser_proc
 
         if selected_index is None:
-            print("\n📱 Album selection cancelled")
+            print("\n📱 アルバム選択がキャンセルされました")
             return
 
         while True:
@@ -6501,7 +6502,7 @@ def select_recently_added_jacket_mode(n=10):
             folder_tracks = get_folder_tracks(selected_folder)
 
             if not folder_tracks:
-                print("⚠️ No music files found in the selected folder")
+                print("⚠️ 選択されたフォルダに音楽ファイルが見つかりませんでした")
                 break
 
             # 追加日時を表示
@@ -6509,14 +6510,14 @@ def select_recently_added_jacket_mode(n=10):
             mt = folder_mtime_map.get(selected_folder, 0)
             dt_str = time.strftime('%Y-%m-%d %H:%M', time.localtime(mt)) if mt else "不明"
 
-            print(f"\n📂 Folder: {os.path.basename(selected_folder)}")
-            print(f"📅 Added: {dt_str}")
-            print(f"🎵 Playing {len(folder_tracks)} tracks in folder mode")
+            print(f"\n📂 フォルダ: {os.path.basename(selected_folder)}")
+            print(f"📅 追加日時: {dt_str}")
+            print(f"🎵 {len(folder_tracks)}曲をフォルダーモードで再生します")
             q_pending = len(next_album_selection)
             if q_pending > 0:
-                print(f"📋 You can click more albums in the browser during playback (queue: {q_pending})")
+                print(f"📋 再生中にブラウザで追加クリックできます (現在キュー: {q_pending}件)")
             else:
-                print(f"💡 You can click the next album in the browser during playback")
+                print(f"💡 再生中にブラウザで次のアルバムをクリックできます")
 
             # ★ 開始曲番号の選択
             folder_tracks = ask_start_track(folder_tracks)
@@ -6524,7 +6525,7 @@ def select_recently_added_jacket_mode(n=10):
             play_music_with_mode_switching({'mode': 'folder', 'tracks': folder_tracks})
 
             print("\n" + "=" * 60)
-            print("✅ Album playback complete")
+            print("✅ アルバム再生が完了しました")
 
             time.sleep(0.5)
             clear_input_buffer()
@@ -6535,14 +6536,14 @@ def select_recently_added_jacket_mode(n=10):
                 if 0 <= idx < len(album_covers):
                     selected_index = idx
                     remaining = len(next_album_selection)
-                    print(f"▶️  Playing queued album #{num} (remaining: {remaining})")
+                    print(f"▶️  キューのアルバム #{num} を再生します (残り: {remaining}件)")
                     continue
                 else:
-                    print(f"⚠️ Invalid queue number: {num}")
+                    print(f"⚠️ 無効なキュー番号: {num}")
 
-            print("\n💡 Select the next album from the browser")
-            print("   or type a number in this terminal")
-            print("   Enter 'q' to return to the menu")
+            print("\n💡 ブラウザ画面から次のアルバムを選択してください")
+            print("   またはターミナルに番号を入力してください")
+            print("   'q' + Enter でメニューに戻ります")
             print("=" * 60)
 
             # ★ 修正: readline()前にターミナルをcanonicalモードに戻す
@@ -6565,19 +6566,19 @@ def select_recently_added_jacket_mode(n=10):
                     try:
                         choice = sys.stdin.readline().strip()
                         if choice.lower() in ('q', 'back'):
-                            print("\n📱 Exiting recently-added mode")
+                            print("\n📱 最新アルバム選択モードを終了します")
                             user_quit = True
                             break
                         if choice.isdigit():
                             idx = int(choice) - 1
                             if 0 <= idx < len(album_covers):
                                 selected_index = idx
-                                print(f"✅ Album #{choice} selected")
+                                print(f"✅ アルバム #{choice} が選択されました")
                                 break
                             else:
-                                print(f"⚠️ Enter a number from 1 to {len(album_covers)}")
+                                print(f"⚠️ 1から{len(album_covers)}の範囲で入力してください")
                     except Exception as e:
-                        print(f"⚠️ Input error: {e}")
+                        print(f"⚠️ 入力エラー: {e}")
 
                 if next_album_selection:
                     num = next_album_selection.pop(0)
@@ -6585,34 +6586,34 @@ def select_recently_added_jacket_mode(n=10):
                     if 0 <= idx < len(album_covers):
                         selected_index = idx
                         remaining = len(next_album_selection)
-                        print(f"\n▶️  Album #{num} selected (remaining: {remaining})")
+                        print(f"\n▶️  アルバム #{num} が選択されました (残り: {remaining}件)")
                         break
                     else:
-                        print(f"⚠️ Invalid selection: {num}")
+                        print(f"⚠️ 無効な選択: {num}")
 
                 timeout_counter += 1
 
             if user_quit:
                 break
             if timeout_counter >= max_timeout:
-                print("\n⏰ Timeout: returning to menu")
+                print("\n⏰ タイムアウト: メニューに戻ります")
                 break
 
     except KeyboardInterrupt:
-        print("\n⚠️ Ctrl+C pressed")
+        print("\n⚠️ Ctrl+C が押されました")
     except Exception as e:
-        print(f"\n⚠️ Error: {e}")
+        print(f"\n⚠️ エラー: {e}")
         import traceback
         traceback.print_exc()
     finally:
-        print("\n🧹 Exiting recently-added mode...")
+        print("\n🧹 最新アルバム選択モードを終了中...")
         web_server_running = False
         time.sleep(1.0)
         if web_server_instance:
             try:
                 web_server_instance.server_close()
             except Exception as e:
-                print(f"⚠️ Warning while stopping server: {e}")
+                print(f"⚠️ サーバー停止時の警告: {e}")
         web_server_instance = None
         if browser_process and browser_process.poll() is None:
             try:
@@ -6633,40 +6634,40 @@ def select_recently_added_jacket_mode(n=10):
         time.sleep(0.3)
         next_album_selection.clear()
         web_selection_result = None
-        print("✅ Recently-added mode exited\n")
+        print("✅ 最新アルバム選択モード終了完了\n")
 
 
 def select_album_by_cover_image_loop(mode='all', filters=None):
     """ジャケット画像から選曲するメイン関数(ループ対応版)"""
     global web_server_running, web_server_instance, web_selection_result, next_album_selection
     
-    print("\n🖼️  Cover-art browser mode")
+    print("\n🖼️  ジャケット画像選曲モード")
     print("=" * 60)
     
     # トラック一覧を取得
     if mode == 'all':
-        print("📦 Collecting all album covers from the database...")
+        print("📦 データベース内の全アルバムジャケットを収集中...")
         db = safe_load_database()
         if not db:
             return
         tracks = db
     elif mode == 'filtered' and filters:
-        print(f"📦 Collecting cover art matching {filters}...")
+        print(f"📦 条件 {filters} に該当するアルバムジャケットを収集中...")
         tracks = get_tracks_by_filters(filters, limit=10000)
         if not tracks:
-            print("⚠️ No tracks matched the filter")
+            print("⚠️ 条件に一致する曲が見つかりませんでした")
             return
     else:
-        print("⚠️ Invalid mode")
+        print("⚠️ 無効なモードです")
         return
     
     album_covers = collect_album_covers(tracks, limit=1000)
     
     if not album_covers:
-        print("⚠️ No cover art found")
+        print("⚠️ ジャケット画像が見つかりませんでした")
         return
     
-    print(f"✅ Found {len(album_covers)} album cover(s)")
+    print(f"✅ {len(album_covers)}個のアルバムジャケットを発見")
     
     browser_process = None
     
@@ -6700,7 +6701,7 @@ def select_album_by_cover_image_loop(mode='all', filters=None):
             browser_process = browser_proc
         
         if selected_index is None:
-            print("\n📱 Album selection cancelled")
+            print("\n📱 アルバム選択がキャンセルされました")
             return
         
         # ★★★ メインループ ★★★
@@ -6710,16 +6711,16 @@ def select_album_by_cover_image_loop(mode='all', filters=None):
             folder_tracks = get_folder_tracks(selected_folder)
             
             if not folder_tracks:
-                print("⚠️ No music files found in the selected folder")
+                print("⚠️ 選択されたフォルダに音楽ファイルが見つかりませんでした")
                 break
             
-            print(f"\n📂 Folder: {os.path.basename(selected_folder)}")
-            print(f"🎵 Playing {len(folder_tracks)} tracks in folder mode")
+            print(f"\n📂 フォルダ: {os.path.basename(selected_folder)}")
+            print(f"🎵 {len(folder_tracks)}曲をフォルダーモードで再生します")
             q_pending = len(next_album_selection)
             if q_pending > 0:
-                print(f"📋 You can click more albums in the browser during playback (queue: {q_pending})")
+                print(f"📋 再生中にブラウザで追加クリックできます (現在キュー: {q_pending}件)")
             else:
-                print(f"💡 You can click the next album in the browser during playback")
+                print(f"💡 再生中にブラウザで次のアルバムをクリックできます")
             
             # ★ 開始曲番号の選択
             folder_tracks = ask_start_track(folder_tracks)
@@ -6728,7 +6729,7 @@ def select_album_by_cover_image_loop(mode='all', filters=None):
             play_music_with_mode_switching({'mode': 'folder', 'tracks': folder_tracks})
             
             print("\n" + "=" * 60)
-            print("✅ Album playback complete")
+            print("✅ アルバム再生が完了しました")
             
             time.sleep(0.5)
             clear_input_buffer()
@@ -6740,15 +6741,15 @@ def select_album_by_cover_image_loop(mode='all', filters=None):
                 if 0 <= idx < len(album_covers):
                     selected_index = idx
                     remaining = len(next_album_selection)
-                    print(f"▶️  Playing queued album #{num} (remaining: {remaining})")
+                    print(f"▶️  キューのアルバム #{num} を再生します (残り: {remaining}件)")
                     continue
                 else:
-                    print(f"⚠️ Invalid queue number: {num}")
+                    print(f"⚠️ 無効なキュー番号: {num}")
             
             # キューが空のとき次の選択を待つ
-            print("\n💡 Select the next album from the browser")
-            print("   or type a number in this terminal")
-            print("   Enter 'q' to return to the menu")
+            print("\n💡 ブラウザ画面から次のアルバムを選択してください")
+            print("   またはターミナルに番号を入力してください")
+            print("   'q' + Enter でメニューに戻ります")
             print("=" * 60)
             
             # ★ 修正: readline()を呼ぶ前にターミナルをcanonical（通常）モードに確実に戻す
@@ -6776,7 +6777,7 @@ def select_album_by_cover_image_loop(mode='all', filters=None):
                         choice = sys.stdin.readline().strip()
                         
                         if choice.lower() == 'q' or choice.lower() == 'back':
-                            print("\n📱 Exiting cover-art browser")
+                            print("\n📱 ジャケット選択モードを終了します")
                             user_quit = True
                             break
                         
@@ -6784,12 +6785,12 @@ def select_album_by_cover_image_loop(mode='all', filters=None):
                             idx = int(choice) - 1
                             if 0 <= idx < len(album_covers):
                                 selected_index = idx
-                                print(f"✅ Album #{choice} selected")
+                                print(f"✅ アルバム #{choice} が選択されました")
                                 break
                             else:
-                                print(f"⚠️ Enter a number from 1 to {len(album_covers)}")
+                                print(f"⚠️ 1から{len(album_covers)}の範囲で入力してください")
                     except Exception as e:
-                        print(f"⚠️ Input error: {e}")
+                        print(f"⚠️ 入力エラー: {e}")
                 
                 # キューからのクリックチェック
                 if next_album_selection:
@@ -6798,10 +6799,10 @@ def select_album_by_cover_image_loop(mode='all', filters=None):
                     if 0 <= idx < len(album_covers):
                         selected_index = idx
                         remaining = len(next_album_selection)
-                        print(f"\n▶️  Album #{num} selected (remaining: {remaining})")
+                        print(f"\n▶️  アルバム #{num} が選択されました (残り: {remaining}件)")
                         break
                     else:
-                        print(f"⚠️ Invalid selection: {num}")
+                        print(f"⚠️ 無効な選択: {num}")
                 
                 timeout_counter += 1
             
@@ -6809,17 +6810,17 @@ def select_album_by_cover_image_loop(mode='all', filters=None):
                 break
             
             if timeout_counter >= max_timeout:
-                print("\n⏰ Timeout: returning to menu")
+                print("\n⏰ タイムアウト: メニューに戻ります")
                 break
     
     except KeyboardInterrupt:
-        print("\n⚠️ Ctrl+C pressed")
+        print("\n⚠️ Ctrl+C が押されました")
     except Exception as e:
-        print(f"\n⚠️ Error: {e}")
+        print(f"\n⚠️ エラー: {e}")
         import traceback
         traceback.print_exc()
     finally:
-        print("\n🧹 Exiting cover-art browser...")
+        print("\n🧹 ジャケット選択モードを終了中...")
         
         # ★★★ 重要: サーバー停止フラグを先に立てる ★★★
         web_server_running = False
@@ -6832,9 +6833,9 @@ def select_album_by_cover_image_loop(mode='all', filters=None):
             try:
                 # shutdown()の代わりにserver_close()だけを使う
                 web_server_instance.server_close()
-                print("✓ Server stopped")
+                print("✓ サーバーを停止しました")
             except Exception as e:
-                print(f"⚠️ Warning while stopping server: {e}")
+                print(f"⚠️ サーバー停止時の警告: {e}")
         web_server_instance = None
         
         # ブラウザプロセス終了
@@ -6842,7 +6843,7 @@ def select_album_by_cover_image_loop(mode='all', filters=None):
             try:
                 browser_process.terminate()
                 browser_process.wait(timeout=2)
-                print("✓ Browser closed")
+                print("✓ ブラウザを終了しました")
             except:
                 try:
                     browser_process.kill()
@@ -6866,8 +6867,8 @@ def select_album_by_cover_image_loop(mode='all', filters=None):
         next_album_selection.clear()
         web_selection_result = None
         
-        print("✅ Cover-art browser exited\n")
-        print("💡 Please wait a moment for the menu to appear...")
+        print("✅ ジャケット選択モード終了完了\n")
+        print("💡 メニューが表示されるまで少しお待ちください...")
 
 
 # ===== 音楽再生機能 =====
@@ -6887,15 +6888,15 @@ def apply_audio_preset_via_sox(input_file, output_device, preset_name='none'):
                                   capture_output=True, text=True, timeout=2)
             if result.returncode == 0 and result.stdout.strip():
                 orig_rate = result.stdout.strip()
-                print(f"📊 soxi sample rate: {orig_rate} Hz")
+                print(f"📊 soxi取得サンプリングレート: {orig_rate} Hz")
         except Exception as e:
-            print(f"⚠️ soxi warning: {e} — trying fallback")
+            print(f"⚠️ soxi警告: {e} - 代替手段を試行します")
         
         # ★★★ soxiが失敗した場合、get_sample_rate関数を使用 ★★★
         if not orig_rate:
-            print("📊 Getting sample rate via fallback...")
+            print("📊 代替手段でサンプリングレートを取得中...")
             orig_rate = str(get_sample_rate(input_file))
-            print(f"📊 Sample rate: {orig_rate} Hz")
+            print(f"📊 取得サンプリングレート: {orig_rate} Hz")
 
         vol_minus_8db = ["vol", "-8dB"]
         
@@ -6917,7 +6918,7 @@ def apply_audio_preset_via_sox(input_file, output_device, preset_name='none'):
         # compand attack,decay  dB_in:dB_out_pairs  gain
         sox_cmd.extend(['compand', '0,0.005', '2:-inf,-inf,-0.18,-0.18', '0'])
         
-        print(f"🎵 Running SoX...")
+        print(f"🎵 SoXコマンド実行中...")
         # ★★★ 修正: エラー出力を確認できるようにする ★★★
         sox_process = subprocess.Popen(sox_cmd, stderr=subprocess.PIPE, stdout=subprocess.DEVNULL)
         
@@ -6926,15 +6927,15 @@ def apply_audio_preset_via_sox(input_file, output_device, preset_name='none'):
         if sox_process.poll() is not None:
             # プロセスがすぐに終了した場合
             stderr_output = sox_process.stderr.read().decode('utf-8', errors='replace')
-            print(f"⚠️ SoX process exited immediately")
-            print(f"⚠️ Error details: {stderr_output}")
+            print(f"⚠️ SoXプロセスが起動直後に終了しました")
+            print(f"⚠️ エラー詳細: {stderr_output}")
             return None
         
-        print(f"✅ SoX process started (PID: {sox_process.pid})")
+        print(f"✅ SoXプロセスが正常に起動しました (PID: {sox_process.pid})")
         return sox_process
         
     except Exception as e:
-        print(f"⚠️ SoX preset error: {e}")
+        print(f"⚠️ SoXプリセット適用エラー: {e}")
         import traceback
         traceback.print_exc()
         return None
@@ -7002,7 +7003,7 @@ def _si_readline(prompt="  → ") -> str:
         print(prompt, end="", flush=True)
         result = tty_fd.readline().rstrip("\n").strip()
     except Exception as e:
-        print(f"\n⚠️ Input error: {e}")
+        print(f"\n⚠️ 入力エラー: {e}")
     finally:
         if tty_fd:
             try: tty_fd.close()
@@ -7027,15 +7028,15 @@ def _si_do_feedback():
     sys.stdout.flush()
     print("\n")
     print("┌──────────────────────────────────────────────────┐")
-    print("│  🎵 Sonia Intelligence — Enter your listening feedback │")
+    print("│  🎵 Sonia Intelligence — 音の感想を入力          │")
     print("├──────────────────────────────────────────────────┤")
-    print("│  e.g.: more piano forward / more hall depth           │")
-    print("│       bass too heavy / boost string brilliance        │")
-    print("│  [Empty Enter = cancel]                               │")
+    print("│  例: ピアノをもっと前に  / ホールの奥行きをもっと │")
+    print("│      低音が重すぎる  / 弦の艶をかなり強調         │")
+    print("│  [空Enter でキャンセル]                          │")
     print("└──────────────────────────────────────────────────┘")
     text = _si_readline("  → ")
     if not text:
-        print("  Cancelled")
+        print("  キャンセルしました")
         return
     try:
         _, explanation = _si_instance.on_feedback(text)
@@ -7044,8 +7045,8 @@ def _si_do_feedback():
             if line.strip():
                 print(f"  ✓ {line}")
     except Exception as e:
-        print(f"  ⚠️ Error: {e}")
-    _si_readline("  [Press Enter to resume] ")
+        print(f"  ⚠️ エラー: {e}")
+    _si_readline("  [Enter で再生を再開] ")
 
 
 def _si_do_hall_select():
@@ -7056,14 +7057,14 @@ def _si_do_hall_select():
         from acoustic_spaces import list_spaces
         spaces = list_spaces()
     except Exception as e:
-        print(f"\n⚠️ Error getting acoustic space list: {e}")
+        print(f"\n⚠️ 音響空間一覧取得エラー: {e}")
         return
     sys.stdout.write("\033[2J\033[H")  # 画面全体クリア＋先頭（Eventで停止済み）
     sys.stdout.flush()
     cur = _si_instance.current_params.acoustic_space if _si_instance.current_params else ""
     print("\n")
     print("┌───────────────────────────────────────────────────────┐")
-    print("│  🏛️  Sonia Intelligence — Acoustic space selection       │")
+    print("│  🏛️  Sonia Intelligence — 音響空間選択               │")
     print("├───────────────────────────────────────────────────────┤")
     for i, s in enumerate(spaces, 1):
         mark = "●" if s["name"] == cur else " "
@@ -7078,8 +7079,8 @@ def _si_do_hall_select():
             _si_instance.current_params.acoustic_space = sn
             for attr in ("rt60_override","wet_override","pre_delay_override","side_ratio_override"):
                 setattr(_si_instance.current_params, attr, None)
-            print(f"\n  ✓ Acoustic space changed: {spaces[idx]['display_name']}")
-    _si_readline("  [Press Enter to resume] ")
+            print(f"\n  ✓ 音響空間変更: {spaces[idx]['display_name']}")
+    _si_readline("  [Enter で再生を再開] ")
 
 
 def _si_do_profile_select():
@@ -7092,13 +7093,13 @@ def _si_do_profile_select():
         profiles = _si_instance.db.list_profiles()
         presets = list_presets()
     except Exception as e:
-        print(f"\n⚠️ Error getting profile list: {e}")
+        print(f"\n⚠️ プロファイル一覧取得エラー: {e}")
         return
     sys.stdout.write("\033[2J\033[H")  # 画面全体クリア＋先頭（Eventで停止済み）
     sys.stdout.flush()
     print("\n")
     print("┌──────────────────────────────────────────────┐")
-    print("│  🎵 Sonia Intelligence — Profile selection    │")
+    print("│  🎵 Sonia Intelligence — プロファイル選択    │")
     print("├──────────────────────────────────────────────┤")
     if profiles:
         for i, p in enumerate(profiles[:8], 1):
@@ -7119,16 +7120,16 @@ def _si_do_profile_select():
                 params = _si_instance.db._dict_to_params(prof.current_params, prof.base_preset)
                 _si_instance.current_params = params
                 _si_instance.current_profile_id = prof.profile_id
-                print(f"\n  ✓ Profile applied: {prof.display_name}")
+                print(f"\n  ✓ プロファイル適用: {prof.display_name}")
             elif offset <= idx < offset + len(presets):
                 preset = presets[idx - offset]
                 params = params_from_preset(preset["name"])
                 _si_instance.current_params = params
                 _si_instance.current_profile_id = None
-                print(f"\n  ✓ Preset applied: {preset['display_name']}")
+                print(f"\n  ✓ プリセット適用: {preset['display_name']}")
         except Exception as e:
-            print(f"\n  ⚠️ Apply error: {e}")
-    _si_readline("  [Press Enter to resume] ")
+            print(f"\n  ⚠️ 適用エラー: {e}")
+    _si_readline("  [Enter で再生を再開] ")
 
 
 
@@ -7157,9 +7158,9 @@ def _si_write_back_to_music_db(album: str, folder: str, preset_name: str):
         if updated > 0:
             with open(DATABASE_FILE, "w", encoding="utf-8") as f:
                 json.dump(db, f, ensure_ascii=False, indent=2)
-            print(f"  📝 music_mood_db: recorded si_preset=\'{preset_name}\' for {updated} track(s)")
+            print(f"  📝 music_mood_db: {updated}曲に si_preset=\'{preset_name}\' を記録しました")
     except Exception as e:
-        print(f"  ⚠️ DB write-back error: {e}")
+        print(f"  ⚠️ DB書き戻しエラー: {e}")
 
 
 def _si_do_album_preset():
@@ -7173,7 +7174,7 @@ def _si_do_album_preset():
         from genre_presets import list_presets, get_preset
         presets = list_presets()
     except Exception as e:
-        print(f"\n⚠️ Error getting preset list: {e}")
+        print(f"\n⚠️ プリセット一覧取得エラー: {e}")
         return
 
     album = _si_instance._pending_album
@@ -7186,11 +7187,11 @@ def _si_do_album_preset():
 
     print("\n")
     print("┌─────────────────────────────────────────────────────┐")
-    print("│  📀 Sonia Intelligence — Register album preset       │")
+    print("│  📀 Sonia Intelligence — アルバムプリセット登録     │")
     print("├─────────────────────────────────────────────────────┤")
     album_disp = display_name[:45]
-    print(f"│  Album: {album_disp:<46} │")
-    print("│  Select the acoustic preset for this album           │")
+    print(f"│  アルバム: {album_disp:<44} │")
+    print("│  このアルバムの音響プリセットを選択してください     │")
     print("├─────────────────────────────────────────────────────┤")
 
     # カテゴリを整理して表示
@@ -7226,30 +7227,30 @@ def _si_do_album_preset():
             print(f"│  {cur_mark} {num:2d}. {p.display_name[:44]:<44} │")
 
     print("├─────────────────────────────────────────────────────┤")
-    print("│  [Enter only] Cancel                                 │")
+    print("│  [Enter のみ] キャンセル                            │")
     print("└─────────────────────────────────────────────────────┘")
 
     choice = _si_readline("  選択番号 → ")
     if not choice or not choice.strip().isdigit():
-        print("  Cancelled")
+        print("  キャンセルしました")
         return
 
     idx = int(choice.strip())
     if idx not in num_to_preset:
-        print("  Invalid number")
+        print("  無効な番号です")
         return
 
     preset_name = num_to_preset[idx]
     try:
         _si_instance.apply_album_preset(preset_name)
         p = get_preset(preset_name)
-        print(f"\n  ✅ Registered: {display_name}")
+        print(f"\n  ✅ 登録完了: {display_name}")
         print(f"     → {p.display_name}")
-        print(f"     Will be applied automatically from next playback")
+        print(f"     次回から自動適用されます")
         # music_mood_db.jsonにも書き戻す
         _si_write_back_to_music_db(album, _si_instance._pending_folder, preset_name)
     except Exception as e:
-        print(f"\n  ⚠️ Registration error: {e}")
+        print(f"\n  ⚠️ 登録エラー: {e}")
 
     _si_readline("\n  [Enter で再生を再開] ")
 
@@ -7315,7 +7316,7 @@ def _si_do_preset_menu():
     # ── 表示 ─────────────────────────────────────────────────────
     print("\n")
     print("┌─────────────────────────────────────────────────────┐")
-    print("│  🎛️  Sonia Intelligence — Acoustic preset selection  │")
+    print("│  🎛️  Sonia Intelligence — 音響プリセット選択        │")
     print("├─────────────────────────────────────────────────────┤")
 
     num = 0
@@ -7330,13 +7331,13 @@ def _si_do_preset_menu():
             print(f"│  {num:2d}. {label:<43} │")
 
     print("├─────────────────────────────────────────────────────┤")
-    print("│  Multi-select: enter numbers separated by spaces     │")
-    print("│  [Enter only] Cancel                                 │")
+    print("│  複数選択: 「1 3 5」のようにスペース区切りで入力    │")
+    print("│  [Enter のみ] キャンセル                            │")
     print("└─────────────────────────────────────────────────────┘")
 
     choice = _si_readline("  選択 → ")
     if not choice:
-        print("  Cancelled")
+        print("  キャンセルしました")
         return
 
     # 番号をパース（複数可）
@@ -7348,7 +7349,7 @@ def _si_do_preset_menu():
                 selected_nums.append(n)
 
     if not selected_nums:
-        print("  No valid number entered")
+        print("  有効な番号が入力されませんでした")
         return
 
     # 選択されたプリセットを順番に適用
@@ -7362,9 +7363,9 @@ def _si_do_preset_menu():
             if _si_instance.current_params:
                 _si_instance.current_params.eq = {}
                 print(f"  ✓ {label}")
-                print(f"    Cleared all SI EQ corrections")
+                print(f"    SI EQ補正をすべてクリアしました")
             else:
-                print(f"  ⚠️ {label}: current_params not set")
+                print(f"  ⚠️ {label}: current_params が未設定です")
         elif eq_delta:
             # ── EQデルタ定義あり → NLP解釈を完全バイパスして直接適用 ──
             if _si_instance.current_params:
@@ -7377,9 +7378,9 @@ def _si_do_preset_menu():
                 changed = [(b, v) for b, v in p.eq.items() if abs(v) >= 0.5]
                 if changed:
                     bands_str = "  ".join(f"{b}:{v:+.1f}dB" for b, v in changed[:5])
-                    print(f"    Accumulated EQ: {bands_str}")
+                    print(f"    EQ累積: {bands_str}")
             else:
-                print(f"  ⚠️ {label}: current_params not set")
+                print(f"  ⚠️ {label}: current_params が未設定です")
         else:
             # ── eq_delta 空 → on_feedback 経由（残響・空間系） ──
             try:
@@ -7737,9 +7738,17 @@ def _preset_vocal(gain_db, current_volume, eq_part, musikverein_room_effects,
 
 def _preset_jazz(gain_db, current_volume, eq_part, musikverein_room_effects,
                  air_particle_layer, echo_mode, tinnitus_reduction_mode, loudness_filter):
-    """ジャズプリセット。ウッドベースの芯（140/180Hz）とシンバル解像度（8kHz+）を両立。"""
+    """ジャズプリセット。ウッドベースの芯（140/180Hz）とシンバル解像度（8kHz+）を両立。
+    ★ 歪み対策：元のEQ/コンプ/makeup を完全復元。
+       デジタルクリップのみ asoftclip=type=tanh で阻止。
+       tanh 関数は真空管飽和特性に近く、音楽的倍音を保ちながら角を丸める。
+    """
     parts = []
-    parts.append(f'volume={gain_db}dB')
+    # ★ EQ補償オフセット：ジャズEQの累積ブースト（低域+2.2dB、中域+2.2dB、makeup+1.3dB相当）
+    #    を先に引いておくことで asoftclip への入力を適正レベルに保つ。
+    #    音楽的な豊かさ・ダイナミクスはそのまま。外部ゲインプリセットには影響しない。
+    _jazz_eq_offset = -0.7  # -1.8 → -0.7：音量感を戻しつつ歪みを抑制  # EQ累積ブーストの実測ピーク補正値
+    parts.append(f'volume={gain_db + _jazz_eq_offset}dB')
     parts += [
         'equalizer=f=30:t=q:w=0.7:g=2.0',
         'equalizer=f=40:t=q:w=0.75:g=2.2',
@@ -7781,12 +7790,15 @@ def _preset_jazz(gain_db, current_volume, eq_part, musikverein_room_effects,
         else:
             parts.append('highshelf=f=7000:g=0.9:w=0.7')
     parts.append('acompressor=threshold=-18dB:ratio=1.08:attack=1:release=25:makeup=1.0')
-    parts.append('alimiter=level_in=1.0:level_out=1.0:limit=0.96:attack=1:release=50')
+    # ★ ソフトクリッパー：tanh特性で真空管的に角を丸める。
+    #    デジタルの硬いクリップだけを防ぎ、音楽的な倍音・ダイナミクスは一切手を触れない。
+    #    threshold=0.95：-0.45dBFS を超えた瞬間だけ作動。ピアニッシモには完全無干渉。
+    parts.append('asoftclip=type=tanh:threshold=0.95:output=0.95')
     if loudness_filter:
         parts.append(loudness_filter.rstrip(','))
     parts.append(
         f'{eq_part}volume={current_volume}dB,'
-        'alimiter=level_in=1.0:level_out=1.0:limit=0.92:attack=1:release=50'
+        'asoftclip=type=tanh:threshold=0.95:output=0.95'
     )
     main_chain = ','.join(parts)
     if musikverein_room_effects and air_particle_layer:
@@ -7803,7 +7815,7 @@ def _preset_jazz(gain_db, current_volume, eq_part, musikverein_room_effects,
             + '[tap]adelay=1|2[tapd];'
             + "[dry][tapd]amix=inputs=2:weights='1 0.06'[body];"
             + "[body][n1c]amix=inputs=2:weights='1 0.018':normalize=0:duration=first[pres];"
-            + '[pres]alimiter=level_in=1.0:level_out=1.0:limit=0.92:attack=1:release=50[out]'
+            + '[pres]asoftclip=type=tanh:threshold=0.95:output=0.95[out]'
         )
         return ['-filter_complex', fc, '-map', '[out]']
     else:
@@ -7921,6 +7933,8 @@ def _preset_spatial(gain_db, current_volume, eq_part, musikverein_room_effects,
         )
 
         parts.append(
+           #'apulsator=hz=0.08:amount=0.03:mode=sine'
+           #'apulsator=hz=0.12:amount=0.05:mode=sine'
            'apulsator=hz=0.04:amount=0.08:mode=sine'
         )
         
@@ -8182,11 +8196,11 @@ FILTER_PRESET_LABELS = {
     'chamber':     '🏠 Chamber',
     'vocal':       '🎙 Vocal',
     'jazz':        '🎷 Jazz',
-    'calm':        '🌿 Calm (tranquil)',
-    'deep':        '🌊 Deep (immersive)',
-    'spatial':     '🌐 Spatial (3D audio)',
-    'radio':       '📻 Radio (standard)',
-    'bypass':      '⚪ Bypass (no processing / reference)',
+    'calm':        '🌿 Calm (安らぎ)',
+    'deep':        '🌊 Deep (深淵)',
+    'spatial':     '🌐 Spatial (3D空間音響)',
+    'radio':       '📻 Radio (標準)',
+    'bypass':      '⚪ Bypass (音響処理なし / リファレンス)',
 }
 
 # SI プリセット → フィルタープリセット マッピング
@@ -8451,7 +8465,7 @@ def play_one_track(track, show_controls=True):
         # 汎用プリセットになった場合は通知
         if _si_instance._last_was_default:
             with terminal_io_lock:
-                sys.stdout.write("\033[s\033[10;1H  💡 [a]: register preset for this album\033[K\033[u")
+                sys.stdout.write("\033[s\033[10;1H  💡 [a]キー: このアルバムのプリセットを手動登録できます\033[K\033[u")
                 sys.stdout.flush()
 
         # ★★★ SI→フィルタープリセット 自動連動（2段階）★★★
@@ -8511,10 +8525,10 @@ def play_one_track(track, show_controls=True):
             if current_gain_preset == 'classical':
                 current_gain_preset = 'jazz_pop'
 
-    terminal_print(f"\n▶ Now playing: {track.get('title', 'Unknown')}")
-    terminal_print(f"   Artist: {track.get('artist', 'Unknown')}")
+    terminal_print(f"\n▶ 再生中: {track.get('title', 'Unknown')}")
+    terminal_print(f"   アーティスト: {track.get('artist', 'Unknown')}")
     if _profile_loaded:
-        terminal_print(f"   💾 Saved profile applied")
+        terminal_print(f"   💾 保存済みプロファイルを適用しました")
 
     # ★★★ Sonia Intelligence 音響設定表示 ★★★
     if SI_AVAILABLE and _si_instance and _si_instance.current_params:
@@ -8524,9 +8538,9 @@ def play_one_track(track, show_controls=True):
         _fp_label = FILTER_PRESET_LABELS.get(current_filter_preset, current_filter_preset)
         # ジャンル自動判定かSI登録かを示す
         if SI_AVAILABLE and _si_instance and _si_instance._last_was_default:
-            terminal_print(f"   🎛️  Filter: {_fp_label}  ✦auto-genre")
+            terminal_print(f"   🎛️  フィルター: {_fp_label}  ✦ジャンル自動")
         else:
-            terminal_print(f"   🎛️  Filter: {_fp_label}")
+            terminal_print(f"   🎛️  フィルター: {_fp_label}")
     elif not SI_AVAILABLE:
         # SI非使用時もジャンル自動判定を表示
         # ジャンルタグで判定できない場合はタイトル・アーティスト名を補助参照
@@ -8551,63 +8565,63 @@ def play_one_track(track, show_controls=True):
             if _db_fp and _db_fp in _FILTER_PRESET_MAP:
                 current_filter_preset = _db_fp
         _fp_label = FILTER_PRESET_LABELS.get(current_filter_preset, current_filter_preset)
-        terminal_print(f"   🎛️  Filter: {_fp_label}  ✦auto-genre")
+        terminal_print(f"   🎛️  フィルター: {_fp_label}  ✦ジャンル自動")
 
     if current_audio_preset != 'none':
         preset_names = {
-            'vocal': '🎤 Vocal preset',
-            'soloist': '🎻 Soloist preset',
-            'hall': '🏛️ Hall preset',
-            'chamber': '🎼 Chamber preset',
-            'stage': '🎭 Stage preset',
-            'strings': '🎸 Strings preset'
+            'vocal': '🎤 ボーカルプリセット',
+            'soloist': '🎻 ソリストプリセット',
+            'hall': '🏛️ ホールプリセット',
+            'chamber': '🎼 室内楽プリセット',
+            'stage': '🎭 ステージプリセット',
+            'strings': '🎸 弦楽プリセット'
         }
-        terminal_print(f"   Audio: {preset_names.get(current_audio_preset, current_audio_preset)}")
+        terminal_print(f"   音響: {preset_names.get(current_audio_preset, current_audio_preset)}")
 
     composer = track.get('composer', 'Unknown')
     conductor = track.get('conductor', 'Unknown')
     performer = track.get('performer', 'Unknown')
 
     if composer != 'Unknown':
-        terminal_print(f"   Composer: {composer}")
+        terminal_print(f"   作曲: {composer}")
     if conductor != 'Unknown':
-        terminal_print(f"   Conductor: {conductor}")
+        terminal_print(f"   指揮: {conductor}")
     if performer != 'Unknown' and performer != track.get('artist', 'Unknown'):
-        terminal_print(f"   Performer: {performer}")
+        terminal_print(f"   演奏: {performer}")
 
     if current_playback_mode == 'tempo':
         features = track.get('features', {})
         tempo = features.get('tempo', 0)
-        terminal_print(f"   Tempo: {tempo:.0f} BPM")
+        terminal_print(f"   テンポ: {tempo:.0f} BPM")
 
     mood = track.get('mood', 'Unknown')
     if mood != 'Unknown':
         color, reset = get_mood_color(mood)
         emoji = get_mood_emoji(mood)
         mood_names = {
-            'happy': 'Happy',
-            'calm': 'Calm',
-            'energetic': 'Energetic',
-            'melancholy': 'Melancholy',
-            'intense': 'Intense',
-            'ambient': 'Ambient',
-            'moderate': 'Moderate'
+            'happy': '明るい',
+            'calm': '穏やか', 
+            'energetic': 'エネルギッシュ',
+            'melancholy': 'メランコリー',
+            'intense': '激しい',
+            'ambient': '環境音楽',
+            'moderate': '普通'
         }
-        mood_en = mood_names.get(mood, mood)
-        terminal_print(f"   Mood: {color}{emoji} {mood_en}{reset}")
+        mood_jp = mood_names.get(mood, mood)
+        terminal_print(f"   ムード: {color}{emoji} {mood_jp}{reset}")
     
     if show_controls:
-        terminal_print("🎹 [r]Restart | [f]Folder | [n]Next | [b]Prev | [i]Show image | [q]Menu")
-        _gp_labels = {'classical': 'Classical(0dB)', 'general': 'General(-1.5dB)', 'jazz_pop': 'Pop(-3.5dB)', 'loud': 'Loud(-5dB)'}
-        terminal_print(f"🔊 [+][-]Output gain ({CURRENT_VOLUME:+d} dB) | [g]Gain ({_gp_labels.get(current_gain_preset, current_gain_preset)}) | [c]Filter | [s]Save", end="")
+        terminal_print("🎹 [r]最初から再生 | [f]フォルダー順次再生 | [n]次 | [b]前 | [i]画像再表示 | [q]終了してメニューへ")
+        _gp_labels = {'classical': 'クラシック(0dB)', 'general': '汎用(-1.5dB)', 'jazz_pop': 'ポップス(-3.5dB)', 'loud': 'ラウド(-5dB)'}
+        terminal_print(f"🔊 [+][-]出力ゲイン ({CURRENT_VOLUME:+d} dB) | [g]入力ゲイン ({_gp_labels.get(current_gain_preset, current_gain_preset)}) | [c]フィルター | [s]保存", end="")
         if SI_AVAILABLE:
-            terminal_print(" | [z]Feedback | [x]Preset | [a]Album | [h]Hall | [p]Profile")
+            terminal_print(" | [z]フィードバック | [x]プリセット | [a]アルバム登録 | [h]ホール | [p]プロファイル")
         else:
             terminal_print()
 
     track_path = track.get('path', '')
     if not os.path.exists(track_path):
-        terminal_print(f"⚠ File not found: {track_path}")
+        terminal_print(f"⚠ ファイルが見つかりません: {track_path}")
         return False
 
     # ★★★ 修正1: 前回のプロセスを完全に終了 ★★★
@@ -8651,19 +8665,19 @@ def play_one_track(track, show_controls=True):
             current_processes['feh'] = show_cover_image_with_info(image_path, track_info_copy)
             if current_processes['feh']:
                 with terminal_io_lock:
-                    sys.stdout.write(f"\033[s\033[9;1H🖼️ Cover: {os.path.basename(image_path)[:40]}\033[K\033[u")
+                    sys.stdout.write(f"\033[s\033[9;1H🖼️ ジャケット: {os.path.basename(image_path)[:40]}\033[K\033[u")
                     sys.stdout.flush()
 
     try:
         subprocess.run(['which', 'ffmpeg'], check=True, capture_output=True)
         subprocess.run(['which', 'aplay'], check=True, capture_output=True)
     except subprocess.CalledProcessError as e:
-        terminal_print(f"⚠ Required command not found: {e}")
+        terminal_print(f"⚠ 必要なコマンドが見つかりません: {e}")
         return False
 
     try:
         if current_audio_preset != 'none':
-            terminal_print(f"🎵 Playing via SoX (preset: {current_audio_preset})")
+            terminal_print(f"🎵 SoXで再生中(プリセット: {current_audio_preset})")
             sox_process = apply_audio_preset_via_sox(track_path, output_device, current_audio_preset)
             if sox_process:
                 current_processes['aplay'] = sox_process
@@ -8690,7 +8704,7 @@ def play_one_track(track, show_controls=True):
                 return True
             else:
                 # ★★★ 修正: SoXが失敗した場合のエラーメッセージを明確化 ★★★
-                terminal_print("⚠️ SoX playback failed — switching to FFmpeg.")
+                terminal_print("⚠️ SoXでの再生に失敗しました。FFmpegに切り替えて再生を試みます。")
         
         pass  # 🎵 FFmpeg再生中（情報バーに表示済み）
         
@@ -8797,7 +8811,7 @@ def play_one_track(track, show_controls=True):
                     # ★★★ 修正: aplayが異常終了(非ゼロ)かつffmpegがまだ動いている場合は
                     # XRUNなどのデバイスエラー → ffmpegも停止して再生エラー扱いにする ★★★
                     if aplay_result != 0 and ffmpeg_still_running:
-                        terminal_print(f"⚠️ aplay abnormal exit (code={aplay_result}, elapsed={elapsed:.1f}s) — possible device error")
+                        terminal_print(f"⚠️ aplay異常終了(code={aplay_result}, 経過={elapsed:.1f}秒) デバイスエラーの可能性があります")
                         try:
                             current_processes['ffmpeg'].terminate()
                             current_processes['ffmpeg'].wait(timeout=1)
@@ -8825,7 +8839,7 @@ def play_one_track(track, show_controls=True):
         return True
 
     except Exception as e:
-        terminal_print(f"⚠ Playback error: {e}")
+        terminal_print(f"⚠ 再生エラー: {e}")
         return False
     finally:
         if not next_track_requested and not prev_track_requested and not mode_change_requested:
@@ -8894,7 +8908,7 @@ def _save_audio_profile_to_db(album: str, folder: str, profile: dict):
     """
     try:
         if not os.path.exists(DATABASE_FILE):
-            print("  ⚠️ music_mood_db.json not found")
+            print("  ⚠️ music_mood_db.json が見つかりません")
             return 0
         with open(DATABASE_FILE, "r", encoding="utf-8") as f:
             db = json.load(f)
@@ -8919,7 +8933,7 @@ def _save_audio_profile_to_db(album: str, folder: str, profile: dict):
                 json.dump(db, f, ensure_ascii=False, indent=2)
         return updated
     except Exception as e:
-        print(f"  ⚠️ Profile save error: {e}")
+        print(f"  ⚠️ プロファイル保存エラー: {e}")
         return 0
 
 
@@ -9033,7 +9047,7 @@ def _save_audio_profile_to_track(file_path: str, profile: dict) -> bool:
     """
     try:
         if not os.path.exists(DATABASE_FILE):
-            print("  ⚠️ music_mood_db.json not found")
+            print("  ⚠️ music_mood_db.json が見つかりません")
             return False
         with open(DATABASE_FILE, "r", encoding="utf-8") as f:
             db = json.load(f)
@@ -9050,10 +9064,10 @@ def _save_audio_profile_to_track(file_path: str, profile: dict) -> bool:
                 with open(DATABASE_FILE, "w", encoding="utf-8") as f:
                     json.dump(db, f, ensure_ascii=False, indent=2)
                 return True
-        print("  ⚠️ Target track not found in database")
+        print("  ⚠️ 対象曲がDBに見つかりません")
         return False
     except Exception as e:
-        print(f"  ⚠️ Profile save error: {e}")
+        print(f"  ⚠️ プロファイル保存エラー: {e}")
         return False
 
 
@@ -9084,65 +9098,65 @@ def _do_save_profile():
             sys.stdout.flush()
             print("\n")
             print("┌──────────────────────────────────────────────────────┐")
-            print("│  💾  Save audio profile                              │")
+            print("│  💾  音源プロファイル保存                            │")
             print("├──────────────────────────────────────────────────────┤")
-            print(f"│  Track : {title[:43]:<43} │")
-            print(f"│  Album : {(album or '---')[:43]:<43} │")
-            print(f"│  Genre : {(genre or '---')[:43]:<43} │")
+            print(f"│  曲  : {title[:44]:<44} │")
+            print(f"│  AL  : {(album or '---')[:44]:<44} │")
+            print(f"│  Genre: {(genre or '---')[:43]:<43} │")
             print("├──────────────────────────────────────────────────────┤")
-            print(f"│  Filter        : {_fp_label:<38} │")
-            print(f"│  Input gain    : {profile['gain_preset']:<38} │")
-            print(f"│  Output gain   : {CURRENT_VOLUME:+d} dB{'':<35} │")
-            print(f"│  Musikverein   : {'ON' if profile['musikverein_room_effects'] else 'OFF':<38} │")
+            print(f"│  フィルター    : {_fp_label:<38} │")
+            print(f"│  入力ゲイン    : {profile['gain_preset']:<38} │")
+            print(f"│  出力ゲイン    : {CURRENT_VOLUME:+d} dB{'':<35} │")
+            print(f"│  楽友協会効果  : {'ON' if profile['musikverein_room_effects'] else 'OFF':<38} │")
             print(f"│  Air Layer     : {'ON' if profile['air_particle_layer'] else 'OFF':<38} │")
-            print(f"│  Echo mode     : {profile['echo_mode']:<38} │")
-            print(f"│  Tinnitus red. : {'ON' if profile['tinnitus_reduction_mode'] else 'OFF':<38} │")
+            print(f"│  エコーモード  : {profile['echo_mode']:<38} │")
+            print(f"│  耳鳴り低減    : {'ON' if profile['tinnitus_reduction_mode'] else 'OFF':<38} │")
             if profile.get('si_params') and profile['si_params'].get('acoustic_space'):
-                print(f"│  Acoustic space: {profile['si_params']['acoustic_space']:<38} │")
+                print(f"│  音響空間      : {profile['si_params']['acoustic_space']:<38} │")
             if profile.get('si_params') and profile['si_params'].get('eq'):
                 eq_str = str({k: f"{v:+.1f}" for k, v in profile['si_params']['eq'].items()
                               if abs(v) >= 0.1})[:38]
-                print(f"│  EQ delta      : {eq_str:<38} │")
+                print(f"│  EQデルタ      : {eq_str:<38} │")
             print("├──────────────────────────────────────────────────────┤")
-            t_mark = "  ← ★ recommended" if suggestion == 'track' else ""
-            a_mark = "  ← ★ recommended" if suggestion == 'album' else ""
-            print(f"│  Select save scope:                                  │")
-            print(f"│    1. 🎵 This track only{t_mark:<27} │")
-            print(f"│    2. 🏛️  Entire album{a_mark:<29} │")
-            print(f"│    Enter = Cancel                                    │")
+            t_mark = "  ← ★推奨" if suggestion == 'track' else ""
+            a_mark = "  ← ★推奨" if suggestion == 'album' else ""
+            print(f"│  保存単位を選んでください:                           │")
+            print(f"│    1. 🎵 この曲のみ{t_mark:<32} │")
+            print(f"│    2. 🏛️  アルバム全体{a_mark:<30} │")
+            print(f"│    Enter = キャンセル                                │")
             print("└──────────────────────────────────────────────────────┘")
             sys.stdout.flush()
 
-        choice = _si_readline("  Select (1/2): ").strip()
+        choice = _si_readline("  選択 (1/2): ").strip()
 
         if choice == '1':
             if not file_path:
                 with terminal_io_lock:
-                    print("  ⚠️ File path unavailable")
+                    print("  ⚠️ ファイルパスが取得できません")
             else:
                 ok = _save_audio_profile_to_track(file_path, profile)
                 with terminal_io_lock:
                     if ok:
-                        print(f"\n  ✅ Profile saved for '{title[:40]}'")
-                        print(f"     Will be applied automatically next time this track plays")
+                        print(f"\n  ✅ 「{title[:40]}」にプロファイルを保存しました")
+                        print(f"     次回この曲の再生時から自動的に適用されます")
                     else:
-                        print("  ⚠️ Could not save")
+                        print("  ⚠️ 保存できませんでした")
 
         elif choice == '2':
             updated = _save_audio_profile_to_db(album, folder, profile)
             with terminal_io_lock:
                 if updated > 0:
-                    tgt = album or os.path.basename(folder) or 'Unknown'
-                    print(f"\n  ✅ Profile saved for {updated} track(s) in '{tgt[:40]}'")
-                    print(f"     Will be applied automatically from next playback")
+                    tgt = album or os.path.basename(folder) or '不明'
+                    print(f"\n  ✅ 「{tgt[:40]}」の {updated} 曲にプロファイルを保存しました")
+                    print(f"     次回再生時から自動的に適用されます")
                 else:
-                    print("  ⚠️ Could not save (no matching tracks found in the database)")
+                    print("  ⚠️ 保存できませんでした（DBに該当曲が見つかりません）")
 
         else:
             with terminal_io_lock:
-                print("  Cancelled")
+                print("  キャンセルしました")
 
-        _si_readline("  [Press Enter to resume] ")
+        _si_readline("  [Enter で再生を再開] ")
     finally:
         _si_display_event.set()
 
@@ -9172,14 +9186,14 @@ def _do_filter_select(airplay_mode=False):
         folder = os.path.dirname(_ti.get('file_path', ''))
 
         _PRESETS_LIST = [
-            ('musikverein', '🎻  Musikverein (Orchestra)'),
-            ('piano',       '🎹  Piano solo'),
-            ('chamber',     '🏠  Chamber / String quartet'),
-            ('vocal',       '🎙  Vocal / Opera'),
-            ('jazz',        '🎷  Jazz'),
-            ('calm',        '🌿  Calm / Still water'),
-            ('deep',        '🌊  Deep / Submerged'),
-            ('spatial',     '🌐  Spatial  3D / Headphone'),
+            ('musikverein', '🎻  Musikverein (Orchestra)   オーケストラ標準'),
+            ('piano',       '🎹  Piano                    ピアノソロ'),
+            ('chamber',     '🏠  Chamber                  室内楽・弦楽四重奏'),
+            ('vocal',       '🎙  Vocal                    声楽・オペラ'),
+            ('jazz',        '🎷  Jazz                     ジャズ'),
+            ('calm',        '🌿  Calm                     安らぎ・静水面'),
+            ('deep',        '🌊  Deep                     深淵・沈潜'),
+            ('spatial',     '🌐  Spatial                  3D空間音響・ヘッドホン向け'),
         ]
 
         with terminal_io_lock:
@@ -9187,9 +9201,9 @@ def _do_filter_select(airplay_mode=False):
             sys.stdout.flush()
             print("\n")
             print("┌──────────────────────────────────────────────────────┐")
-            print("│  🎛️  Filter preset                                   │")
+            print("│  🎛️  フィルタープリセット変更                        │")
             print("├──────────────────────────────────────────────────────┤")
-            print(f"│  Track: {title:<43} │")
+            print(f"│  曲: {title:<46} │")
             print("├──────────────────────────────────────────────────────┤")
 
             for i, (key, label) in enumerate(_PRESETS_LIST, 1):
@@ -9197,36 +9211,36 @@ def _do_filter_select(airplay_mode=False):
                 print(f"│  {cur} {i}. {label:<47} │")
 
             print("├──────────────────────────────────────────────────────┤")
-            print("│  [Enter only] Cancel                                 │")
+            print("│  [Enter のみ] キャンセル                             │")
             print("└──────────────────────────────────────────────────────┘")
             sys.stdout.flush()
 
-        choice = _si_readline("  Select number → ")
+        choice = _si_readline("  番号を選択 → ")
         if not choice or not choice.strip().isdigit():
             with terminal_io_lock:
-                print("  Cancelled")
+                print("  キャンセルしました")
             return
 
         idx = int(choice.strip()) - 1
         if not (0 <= idx < len(_PRESETS_LIST)):
             with terminal_io_lock:
-                print("  Invalid number")
+                print("  無効な番号です")
             return
 
         new_preset, new_label = _PRESETS_LIST[idx]
         old_preset = current_filter_preset
         current_filter_preset = new_preset
         with terminal_io_lock:
-            print(f"\n  ✅ Filter changed: {FILTER_PRESET_LABELS.get(new_preset, new_preset)}")
+            print(f"\n  ✅ フィルター変更: {FILTER_PRESET_LABELS.get(new_preset, new_preset)}")
 
         # ── music_mood_db への書き戻しを確認 ──
         if album or folder:
-            save_choice = _si_readline("  Remember for this album? (y / Enter=skip) → ")
+            save_choice = _si_readline("  このアルバムに記憶させますか？ (y/Enter=スキップ) → ")
             if save_choice.strip().lower() == 'y':
                 try:
                     if not os.path.exists(DATABASE_FILE):
                         with terminal_io_lock:
-                            print("  ⚠️ music_mood_db.json not found")
+                            print("  ⚠️ music_mood_db.json が見つかりません")
                     else:
                         with open(DATABASE_FILE, "r", encoding="utf-8") as f:
                             db = json.load(f)
@@ -9244,7 +9258,7 @@ def _do_filter_select(airplay_mode=False):
                                 with open(DATABASE_FILE, "w", encoding="utf-8") as f:
                                     json.dump(db, f, ensure_ascii=False, indent=2)
                                 with terminal_io_lock:
-                                    print(f"  📝 Saved filter_preset='{new_preset}' for {updated} track(s)")
+                                    print(f"  📝 {updated}曲に filter_preset='{new_preset}' を記録しました")
                                 # ★ 修正: メモリ上の current_playlist のトラック辞書も更新する。
                                 # DB書き込みだけではリプレイ時の track.get('filter_preset') が
                                 # 空のままになり、SI が上書きするバグを防ぐ。
@@ -9260,13 +9274,13 @@ def _do_filter_select(airplay_mode=False):
                                     pass
                             else:
                                 with terminal_io_lock:
-                                    print("  ⚠️ No matching tracks found in the database")
+                                    print("  ⚠️ 該当曲がDBに見つかりませんでした")
                 except Exception as e:
                     with terminal_io_lock:
-                        print(f"  ⚠️ DB write-back error: {e}")
+                        print(f"  ⚠️ DB書き戻しエラー: {e}")
 
         if not airplay_mode:
-            _si_readline("  [Press Enter to resume playback with new filter] ")
+            _si_readline("  [Enter で再生を再開（フィルターを反映）] ")
     finally:
         _si_display_event.set()
 
@@ -9302,7 +9316,7 @@ def keyboard_listener():
                 if key == 'r':
                     # ★★★ 追加: 曲を頭から再生し直す ★★★
                     replay_requested = True
-                    terminal_print("\n🔄 Restarting track from beginning")
+                    terminal_print("\n🔄 曲を最初から再生します")
                 elif key == 'f':
                     if current_playing_track and current_playing_track.get('path'):
                         folder_path = os.path.dirname(current_playing_track['path'])
@@ -9310,7 +9324,7 @@ def keyboard_listener():
                         if current_folder_tracks:
                             current_playback_mode = 'folder'
                             mode_change_requested = True
-                            terminal_print(f"\n📁 Switched to folder mode: {len(current_folder_tracks)} tracks")
+                            terminal_print(f"\n📁 フォルダーモードに切り替え: {len(current_folder_tracks)}曲")
                 elif key == 'i':
                     if current_image_path and os.path.exists(current_image_path):
                         if current_processes['feh'] and current_processes['feh'].poll() is None:
@@ -9320,7 +9334,7 @@ def keyboard_listener():
                             except:
                                 pass
                         current_processes['feh'] = show_cover_image(current_image_path)
-                        terminal_print(f"🖼️ Cover image redisplayed: {os.path.basename(current_image_path)}")
+                        terminal_print(f"🖼️ ジャケット画像再表示: {os.path.basename(current_image_path)}")
                 elif key == 'q':
                     stop_playback = True
                     cleanup_processes()
@@ -9333,9 +9347,9 @@ def keyboard_listener():
                     # ★★★ 音場調整（Air Particle Layer）ON/OFF トグル ★★★
                     air_particle_layer = not air_particle_layer
                     state = 'ON 🌿' if air_particle_layer else 'OFF'
-                    terminal_print(f"\n👂 Air Particle Layer: {state}")
+                    terminal_print(f"\n👂 音場調整 (Air Particle Layer): {state}")
                     if air_particle_layer:
-                        terminal_print("   Pink-noise layer enabled → applied from next track (press R to restart now)")
+                        terminal_print("   ピンクノイズ空気層を有効化 → 次の曲から反映（現在曲はRキーで再開）")
                     replay_requested = True  # 即座に現在曲に反映
 
                 # ━━ Sonia Intelligence キー ━━━━━━━━━━━━━━━
@@ -9372,27 +9386,27 @@ def keyboard_listener():
                 elif key in ('+', '='):
                     # ★★★ [+] 再生中ゲイン（音量）を +1dB ★★★
                     CURRENT_VOLUME = min(CURRENT_VOLUME + 1, 30)
-                    terminal_print(f"\n🔊 Output gain: {CURRENT_VOLUME:+d} dB  ([+] up / [-] down)")
+                    terminal_print(f"\n🔊 出力ゲイン: {CURRENT_VOLUME:+d} dB（[+]上げる / [-]下げる）")
                     replay_requested = True  # 現在曲に即反映
 
                 elif key == '-':
                     # ★★★ [-] 再生中ゲイン（音量）を -1dB ★★★
                     CURRENT_VOLUME = max(CURRENT_VOLUME - 1, -30)
-                    terminal_print(f"\n🔉 Output gain: {CURRENT_VOLUME:+d} dB  ([+] up / [-] down)")
+                    terminal_print(f"\n🔉 出力ゲイン: {CURRENT_VOLUME:+d} dB（[+]上げる / [-]下げる）")
                     replay_requested = True  # 現在曲に即反映
 
                 elif key == 'g':
                     # ★★★ [g] 入力ゲインプリセット循環 ★★★
                     _gain_order = ['classical', 'general', 'jazz_pop', 'loud']
                     _gain_labels = {
-                        'classical': 'Classical (0 dB)',
-                        'general':   'General (-1.5 dB)',
-                        'jazz_pop':  'Pop (-3.5 dB)',
-                        'loud':      'Loud (-5 dB)',
+                        'classical': 'クラシック (0 dB)',
+                        'general':   '汎用 (-1.5 dB)',
+                        'jazz_pop':  'ポップス (-3.5 dB)',
+                        'loud':      'ラウド (-5 dB)',
                     }
                     _cur_idx = _gain_order.index(current_gain_preset) if current_gain_preset in _gain_order else 0
                     current_gain_preset = _gain_order[(_cur_idx + 1) % len(_gain_order)]
-                    terminal_print(f"\n🎚️  Input gain preset: {_gain_labels[current_gain_preset]}  ([g] cycle / [s] save)")
+                    terminal_print(f"\n🎚️  入力ゲインプリセット: {_gain_labels[current_gain_preset]}  ([g]で切替 / [s]で保存)")
                     replay_requested = True  # 現在曲に即反映
 
                 elif key == 's':
@@ -9402,27 +9416,27 @@ def keyboard_listener():
                     # 画面クリア後にコントロール表示を再描画
                     try:
                         time.sleep(0.1)
-                        terminal_print("\n🎹 [r]Restart | [f]Folder | [n]Next | [b]Prev | [i]Show image | [q]Menu")
-                        _gp_l = {'classical': 'Classical(0dB)', 'general': 'General(-1.5dB)', 'jazz_pop': 'Pop(-3.5dB)', 'loud': 'Loud(-5dB)'}
-                        terminal_print(f"🔊 [+][-]Output gain ({CURRENT_VOLUME:+d} dB) | [g]Gain ({_gp_l.get(current_gain_preset, current_gain_preset)}) | [c]Filter | [s]Save", end="")
+                        terminal_print("\n🎹 [r]最初から再生 | [f]フォルダー順次再生 | [n]次 | [b]前 | [i]画像再表示 | [q]終了してメニューへ")
+                        _gp_l = {'classical': 'クラシック(0dB)', 'general': '汎用(-1.5dB)', 'jazz_pop': 'ポップス(-3.5dB)', 'loud': 'ラウド(-5dB)'}
+                        terminal_print(f"🔊 [+][-]出力ゲイン ({CURRENT_VOLUME:+d} dB) | [g]入力ゲイン ({_gp_l.get(current_gain_preset, current_gain_preset)}) | [c]フィルター | [s]保存", end="")
                         if SI_AVAILABLE:
-                            terminal_print(" | [z]Feedback | [x]Preset | [a]Album | [h]Hall | [p]Profile")
+                            terminal_print(" | [z]フィードバック | [x]プリセット | [a]アルバム登録 | [h]ホール | [p]プロファイル")
                         else:
                             terminal_print()
                     except:
                         pass
                     # ── 画面クリア後にキーガイドを再表示 ──
                     time.sleep(0.1)
-                    terminal_print("\n🎹 [r]Restart | [f]Folder | [n]Next | [b]Prev | [i]Show image | [q]Menu")
+                    terminal_print("\n🎹 [r]最初から再生 | [f]フォルダー順次再生 | [n]次 | [b]前 | [i]画像再表示 | [q]終了してメニューへ")
                     _fp = FILTER_PRESET_LABELS.get(current_filter_preset, current_filter_preset)
-                    _gp_l2 = {'classical': 'Classical(0dB)', 'general': 'General(-1.5dB)', 'jazz_pop': 'Pop(-3.5dB)', 'loud': 'Loud(-5dB)'}
-                    terminal_print(f"🔊 [+][-]Output gain ({CURRENT_VOLUME:+d} dB) | [g]Gain ({_gp_l2.get(current_gain_preset, current_gain_preset)}) | [c]Filter ({_fp}) | [s]Save", end="")
+                    _gp_l2 = {'classical': 'クラシック(0dB)', 'general': '汎用(-1.5dB)', 'jazz_pop': 'ポップス(-3.5dB)', 'loud': 'ラウド(-5dB)'}
+                    terminal_print(f"🔊 [+][-]出力ゲイン ({CURRENT_VOLUME:+d} dB) | [g]入力ゲイン ({_gp_l2.get(current_gain_preset, current_gain_preset)}) | [c]フィルター ({_fp}) | [s]保存", end="")
                     if SI_AVAILABLE:
-                        terminal_print(" | [z]Feedback | [x]Preset | [a]Album | [h]Hall | [p]Profile")
+                        terminal_print(" | [z]フィードバック | [x]プリセット | [a]アルバム登録 | [h]ホール | [p]プロファイル")
                     else:
                         terminal_print()
     except Exception as e:
-        terminal_print(f"Keyboard listener error: {e}")
+        terminal_print(f"キーボードリスナーエラー: {e}")
     finally:
         # ★ 修正: TCSADRAIN（出力バッファ待ち）→ TCSANOW（即時復元）
         # TCSADRAIN はffmpeg/aplayがまだ書き込み中だと長時間ブロックし
@@ -9441,7 +9455,7 @@ def voice_listener():
     if not VOICE_RECOGNITION_AVAILABLE:
         return
     if not os.path.exists(VOSK_MODEL_PATH):
-        print("⚠️ Vosk model not found:", VOSK_MODEL_PATH)
+        print("⚠️ Voskモデルが見つかりません:", VOSK_MODEL_PATH)
         return
 
     q = queue.Queue()
@@ -9479,8 +9493,8 @@ def voice_listener():
     try:
         with sd.RawInputStream(samplerate=samplerate, blocksize=8000, dtype='int16',
                                channels=1, callback=callback, device=device_id):
-            terminal_print("🎤 Voice recognition started (offline Vosk)")
-            terminal_print(f"🎤 Sample rate: {samplerate} Hz, device: {device_id}")
+            terminal_print("🎤 音声認識を開始しました(オフライン Vosk)")
+            terminal_print(f"🎤 サンプルレート: {samplerate} Hz, デバイス: {device_id}")
             while not stop_playback:
                 try:
                     data = q.get(timeout=1)
@@ -9491,7 +9505,7 @@ def voice_listener():
                     command = result.get("text", "").strip()
                     if not command:
                         continue
-                    terminal_print(f"🎤 Recognised: {command}")
+                    terminal_print(f"🎤 認識: {command}")
                     # （既存のコマンド判定ロジックをそのまま使用）
                     if "フォルダ" in command or "フォルダー" in command:
                         if current_playing_track and current_playing_track.get('path'):
@@ -9500,31 +9514,31 @@ def voice_listener():
                             if current_folder_tracks:
                                 current_playback_mode = 'folder'
                                 mode_change_requested = True
-                                terminal_print(f"\n📁 Switched to folder mode: {len(current_folder_tracks)} tracks")
+                                terminal_print(f"\n📁 フォルダーモードに切り替え: {len(current_folder_tracks)}曲")
                     elif "テンポ" in command:
                         current_playback_mode = 'tempo'
                         mode_change_requested = True
-                        terminal_print("\n🎵 Switched to tempo mode")
+                        terminal_print("\n🎵 テンポモードに切り替え")
                     elif "作曲家" in command or "さっきょくか" in command:
                         current_playback_mode = 'composer'
                         mode_change_requested = True
-                        terminal_print("\n🎼 Switched to composer mode")
+                        terminal_print("\n🎼 作曲家モードに切り替え")
                     elif "演奏" in command or "えんそう" in command or "オーケストラ" in command:
                         current_playback_mode = 'performer'
                         mode_change_requested = True
-                        terminal_print("\n🎻 Switched to performer mode")
+                        terminal_print("\n🎻 演奏者モードに切り替え")
                     elif "指揮" in command or "しき" in command:
                         current_playback_mode = 'conductor'
                         mode_change_requested = True
-                        terminal_print("\n🎺 Switched to conductor mode")
+                        terminal_print("\n🎺 指揮者モードに切り替え")
                     elif "ジャンル" in command or "じゃんる" in command:
                         current_playback_mode = 'genre'
                         mode_change_requested = True
-                        terminal_print("\n🎭 Switched to genre mode")
+                        terminal_print("\n🎭 ジャンルモードに切り替え")
                     elif "ムード" in command or "むーど" in command:
                         current_playback_mode = 'mood'
                         mode_change_requested = True
-                        terminal_print("\n🎭 Switched to mood mode")
+                        terminal_print("\n🎭 ムードモードに切り替え")
                     elif "次" in command:
                         next_track_requested = True
                     elif "前" in command:
@@ -9532,7 +9546,7 @@ def voice_listener():
                     elif "もう一度" in command or "もういちど" in command or "リプレイ" in command or "最初から" in command:
                         # ★★★ 追加: 曲を頭から再生し直す音声コマンド ★★★
                         replay_requested = True
-                        terminal_print("\n🔄 Restarting track from beginning")
+                        terminal_print("\n🔄 曲を最初から再生します")
                     elif "終了" in command or "ストップ" in command or "停止" in command:
                         stop_playback = True
                         cleanup_processes()
@@ -9546,10 +9560,10 @@ def voice_listener():
                                 except:
                                     pass
                             current_processes['feh'] = show_cover_image(current_image_path)
-                            terminal_print(f"🖼️ Cover image redisplayed: {os.path.basename(current_image_path)}")
+                            terminal_print(f"🖼️ ジャケット画像再表示: {os.path.basename(current_image_path)}")
     except Exception as e:
-        terminal_print(f"Voice recognition error: {e}")
-        terminal_print("💡 Hint: check that your USB microphone is connected")
+        terminal_print(f"音声認識エラー: {e}")
+        terminal_print("💡 ヒント: USBマイクの接続を確認してください")
 
 
 # ===== ギャップレス再生機能 =====
@@ -9665,7 +9679,7 @@ def play_tracks_gapless(tracks, start_index=0):
         else:
             # -af モード: フィルターチェーンの先頭に adelay を追加
             filter_args[1] = f'adelay={RECLOCKER_SILENCE_MS}|{RECLOCKER_SILENCE_MS},' + filter_args[1]
-        print(f"🔇 Reclocker stabilisation: adding {RECLOCKER_SILENCE_MS // 1000}s silence at start")
+        print(f"🔇 リクロッカー安定化: {RECLOCKER_SILENCE_MS // 1000}秒の無音を先頭に追加します")
         ffmpeg_cmd.extend(
             ['-vn', '-ar', str(output_sample_rate), '-acodec', 'pcm_s32le']
             + filter_args
@@ -9681,13 +9695,13 @@ def play_tracks_gapless(tracks, start_index=0):
             '--period-size=32768'
         ]
         
-        print(f"\n🎵 Gapless mode: playing {len(batch_tracks)} tracks continuously")
+        print(f"\n🎵 ギャップレス再生モード: {len(batch_tracks)}曲を連続再生")
         print("=" * 60)
         for i, track in enumerate(batch_tracks[:5]):  # 最初の5曲だけ表示
             track_name = track.get('title', os.path.basename(track.get('path', '')))
             print(f"  [{current_batch_start + i + 1}] {track_name}")
         if len(batch_tracks) > 5:
-            print(f"  ... and {len(batch_tracks) - 5} more")
+            print(f"  ... 他 {len(batch_tracks) - 5}曲")
         print("=" * 60)
         
         # FFmpegとaplayをパイプで接続
@@ -9763,7 +9777,7 @@ def play_tracks_gapless(tracks, start_index=0):
         return len(tracks)
     
     except Exception as e:
-        print(f"⚠️ Gapless playback error: {e}")
+        print(f"⚠️ ギャップレス再生エラー: {e}")
         import traceback
         traceback.print_exc()
         return start_index
@@ -9795,10 +9809,10 @@ def play_music_with_mode_switching(initial_playlist):
         initial_playlist = folder_tracks.copy()
         current_folder_tracks = folder_tracks.copy()
         current_playback_mode = 'folder'
-        print(f"📁 Starting in folder mode: {len(initial_playlist)} tracks")
+        print(f"📁 フォルダモードで開始: {len(initial_playlist)}曲")
     
     if not initial_playlist:
-        print("⚠ Nothing to play")
+        print("⚠ 再生対象がありません")
         stop_playback = True
         cleanup_processes()
         return
@@ -9806,11 +9820,11 @@ def play_music_with_mode_switching(initial_playlist):
     # フォルダモードの場合はシャッフルしない
     if not folder_mode_start:
         random.shuffle(initial_playlist)
-        print(f"🎧 Starting playback: {len(initial_playlist)} tracks")
+        print(f"🎧 {len(initial_playlist)}曲の再生を開始します")
     else:
-        print(f"🎧 Playing folder tracks in order")
+        print(f"🎧 フォルダ内の曲を順番に再生します")
     
-    print(f"💡 Press [q] during playback to return to the menu")
+    print(f"💡 再生中に [q] でメニューに戻ります")
     stop_playback = False
     next_track_requested = False
     prev_track_requested = False
@@ -9830,16 +9844,16 @@ def play_music_with_mode_switching(initial_playlist):
     if VOICE_RECOGNITION_AVAILABLE and VOICE_RECOGNITION_ENABLED:
         threading.Thread(target=voice_listener, daemon=True).start()
     elif VOICE_RECOGNITION_AVAILABLE and not VOICE_RECOGNITION_ENABLED:
-        terminal_print("🔇 Voice recognition disabled (--no-voice)")
+        terminal_print("🔇 音声認識は無効化されています (--no-voice)")
     
     # ★★★ フォルダモードの場合はギャップレス再生を使用 ★★★
     if folder_mode_start and gapless_mode_enabled:
-        print("\n🎵 Starting gapless playback mode")
+        print("\n🎵 ギャップレス再生モードで再生します")
         try:
             last_index = play_tracks_gapless(initial_playlist, start_index=0)
-            print(f"\n✅ Gapless playback complete ({last_index} tracks)")
+            print(f"\n✅ ギャップレス再生が完了しました ({last_index}曲再生)")
         except KeyboardInterrupt:
-            print("\n⏸️ Playback stopped")
+            print("\n⏸️ 再生を停止しました")
             stop_playback = True
         finally:
             stop_playback = True
@@ -9868,7 +9882,7 @@ def play_music_with_mode_switching(initial_playlist):
             if not playlist or current_track_index >= len(playlist) or current_track_index < 0:
                 # ★★★ 修正: フォルダモードの場合は終了する ★★★
                 if current_playback_mode == 'folder' and folder_mode_start:
-                    print("📁 All folder tracks played")
+                    print("📁 フォルダ内の全曲再生が完了しました")
                     stop_playback = True
                     break
                 elif current_playback_mode == 'folder':
@@ -9877,13 +9891,13 @@ def play_music_with_mode_switching(initial_playlist):
                     current_folder_tracks = []
                     playlist = base_playlist
                     current_track_index = 0
-                    print("📁 Folder playback complete — returning to original playlist")
+                    print("📁 フォルダー再生完了、元のプレイリストに戻ります")
                     if not playlist:
                         stop_playback = True
                         break
                 else:
                     # 通常モードで曲が終了
-                    print("✅ All tracks in playlist played")
+                    print("✅ プレイリストの全曲再生が完了しました")
                     stop_playback = True
                     break
 
@@ -9891,7 +9905,7 @@ def play_music_with_mode_switching(initial_playlist):
 
             success = play_one_track(track, show_controls=True)
             if not success:
-                print(f"⚠ Playback failed: {track.get('title', 'Unknown')}")
+                print(f"⚠ 曲再生失敗: {track.get('title', 'Unknown')}")
                 # ★★★ 修正: 連続エラーによる高速スキップを防ぐため少し待機 ★★★
                 time.sleep(0.5)
                 current_track_index += 1
@@ -9911,7 +9925,7 @@ def play_music_with_mode_switching(initial_playlist):
             if replay_requested:
                 replay_requested = False
                 # 同じ曲をもう一度再生（current_track_indexは変えない）
-                print("🔄 Restarting current track")
+                print("🔄 同じ曲を最初から再生します")
                 continue
             # ★★★ ここまで追加 ★★★
 
@@ -9928,7 +9942,7 @@ def play_music_with_mode_switching(initial_playlist):
             if current_playback_mode == 'folder' and current_track_index >= len(current_folder_tracks):
                 if folder_mode_start:
                     # ジャケット選択から開始したフォルダモードは終了
-                    print("📁 All folder tracks played")
+                    print("📁 フォルダ内の全曲再生が完了しました")
                     stop_playback = True
                     break
                 else:
@@ -9937,10 +9951,10 @@ def play_music_with_mode_switching(initial_playlist):
                     current_folder_tracks = []
                     current_track_index = 0
                     playlist = base_playlist
-                    print("📁 Folder playback complete — returning to original playlist")
+                    print("📁 フォルダー再生完了、元のプレイリストに戻ります")
 
     except KeyboardInterrupt:
-        print("\n⏸️ Playback stopped")
+        print("\n⏸️ 再生を停止しました")
         stop_playback = True
     finally:
         stop_playback = True
@@ -10071,8 +10085,8 @@ def _is_bluealsa_device(dev: str) -> bool:
 
 
 def select_output_device_interactive():
-    """Read /proc/asound/cards, show the sound-card list, and let the user
-    choose an output device by card number."""
+    """/proc/asound/cards を読んでサウンドカード一覧を表示し、
+    カード番号そのままで出力デバイスを手動選択する。"""
     global output_device
 
     devices = {}  # {card_num_str: {'hw': ..., 'name': ...}}
@@ -10086,7 +10100,7 @@ def select_output_device_interactive():
                     hw_str    = f"hw:{card_num},0"
                     devices[card_num] = {'hw': hw_str, 'name': card_name}
     except Exception as e:
-        print(f"⚠️ Failed to read /proc/asound/cards: {e}")
+        print(f"⚠️ /proc/asound/cards の読み取りに失敗しました: {e}")
 
     # BlueALSA を追加 — 実際に接続中のデバイスのフル PCM 文字列を取得
     _ba_dev  = _get_bluealsa_device()
@@ -10108,45 +10122,45 @@ def select_output_device_interactive():
         devices['b'] = {'hw': _ba_dev, 'name': _ba_name}
     elif shutil.which('bluealsa-aplay') or os.path.exists('/var/run/bluealsa'):
         # bluealsa-aplay はあるが接続中デバイスなし
-        devices['b'] = {'hw': 'bluealsa', 'name': 'Bluetooth (BlueALSA — no device connected)'}
+        devices['b'] = {'hw': 'bluealsa', 'name': 'Bluetooth (BlueALSA — デバイス未接続)'}
 
     if not devices:
-        print(f"⚠️ No sound card found. Keeping current device ({output_device}).")
+        print(f"⚠️ サウンドカードが見つかりません。現在のデバイス ({output_device}) を継続します。")
         return output_device
 
     print("\n" + "=" * 60)
-    print("🔊 Select an output sound card")
+    print("🔊 出力サウンドカードを選択してください")
     print("=" * 60)
     for key in sorted(devices.keys()):
         d = devices[key]
-        marker = "  ◀ current" if d['hw'] == output_device else ""
+        marker = "  ◀ 現在" if d['hw'] == output_device else ""
         print(f"  {key}. {d['hw']:14s}  {d['name']}{marker}")
-    print(f"\n  Enter only → keep current setting ({output_device})")
+    print(f"\n  Enter のみ → 現在の設定を維持 ({output_device})")
     print("=" * 60)
 
     for _ in range(3):
         try:
-            raw = input("Enter number: ").strip()
+            raw = input("番号を入力: ").strip()
         except (EOFError, KeyboardInterrupt):
             break
         if raw == '':
-            print(f"✅ Keeping device: {output_device}")
+            print(f"✅ デバイスを維持します: {output_device}")
             return output_device
         if raw in devices:
             chosen = devices[raw]
             output_device = chosen['hw']
-            print(f"✅ Output device: {output_device}  ({chosen['name']})")
+            print(f"✅ 出力デバイス: {output_device}  ({chosen['name']})")
             return output_device
-        print("⚠️ Please enter a valid number")
+        print("⚠️ 有効な番号を入力してください")
 
-    print(f"✅ Keeping device: {output_device}")
+    print(f"✅ デバイスを維持します: {output_device}")
     return output_device
 
 
 def select_voice_recognition_interactive():
-    """Let the user enable/disable voice recognition at startup.
-    Does nothing if VOICE_RECOGNITION_AVAILABLE is False.
-    Returns True (enabled) / False (disabled).
+    """起動時にマイク（音声認識）のオン/オフをユーザーに選択させる。
+    VOICE_RECOGNITION_AVAILABLE が False の場合は何もしない。
+    戻り値: True（有効）/ False（無効）
     """
     global VOICE_RECOGNITION_ENABLED
 
@@ -10154,45 +10168,45 @@ def select_voice_recognition_interactive():
         return True  # Voskが入っていなければそもそも関係なし
 
     print("\n" + "=" * 60)
-    print("🎤 Voice recognition (microphone) setup")
+    print("🎤 音声認識（マイク）の設定")
     print("=" * 60)
-    current_label = "Enabled 🎤" if VOICE_RECOGNITION_ENABLED else "Disabled 🔇"
-    print(f"  1. Enable  🎤  (voice commands available)")
-    print(f"  2. Disable  🔇  (noisy environment / no microphone)")
-    print(f"\n  Enter only → keep current setting ({current_label})")
+    current_label = "有効 🎤" if VOICE_RECOGNITION_ENABLED else "無効 🔇"
+    print(f"  1. 有効にする  🎤  （音声コマンドが使えます）")
+    print(f"  2. 無効にする  🔇  （にぎやかな環境・マイク不使用）")
+    print(f"\n  Enter のみ → 現在の設定を維持（{current_label}）")
     print("=" * 60)
 
     for _ in range(3):
         try:
-            raw = input("Enter number: ").strip()
+            raw = input("番号を入力: ").strip()
         except (EOFError, KeyboardInterrupt):
             break
         if raw == '':
-            print(f"✅ Keeping voice recognition setting: {current_label}")
+            print(f"✅ 音声認識の設定を維持します: {current_label}")
             return VOICE_RECOGNITION_ENABLED
         if raw == '1':
             VOICE_RECOGNITION_ENABLED = True
-            print("✅ Voice recognition: Enabled 🎤")
+            print("✅ 音声認識: 有効 🎤")
             return True
         if raw == '2':
             VOICE_RECOGNITION_ENABLED = False
-            print("🔇 Voice recognition: Disabled")
+            print("🔇 音声認識: 無効")
             return False
-        print("⚠️ Please enter 1 or 2")
+        print("⚠️ 1 または 2 を入力してください")
 
-    print(f"✅ Keeping voice recognition setting: {current_label}")
+    print(f"✅ 音声認識の設定を維持します: {current_label}")
     return VOICE_RECOGNITION_ENABLED
 
 
 def show_splash_screen():
-    """Startup splash:
-        - Display Sonia 奏在 ASCII art in the terminal
-        - Show Souzailogo.png fullscreen via feh
-        - Auto-clear after ~4 s and return to the main screen
+    """起動時スプラッシュ:
+      - ターミナルに ASCII アートで「Sonia 奏在」を表示
+      - Souzailogo.png を feh --fullscreen でデスクトップ全体に表示
+      - 約 4 秒後に自動消去して通常の制御画面に戻る
     """
     os.system('clear')
 
-    # ---- Terminal ASCII art ----
+    # ---- ターミナル ASCII アート ----
     art = [
         "",
         "  \033[1;36m ██████╗ \033[0m\033[1;34m ██████╗ \033[0m\033[1;36m███╗   ██╗\033[0m"
@@ -10218,7 +10232,7 @@ def show_splash_screen():
         print(line)
     sys.stdout.flush()
 
-    # ---- Display logo image fullscreen via feh ----
+    # ---- feh でロゴ画像をデスクトップ全体に表示 ----
     feh_proc = None
     logo_path = _find_splash_logo()
     if logo_path and shutil.which('feh'):
@@ -10240,10 +10254,10 @@ def show_splash_screen():
         except Exception:
             feh_proc = None
 
-    # ---- Wait 4 seconds ----
+    # ---- 4 秒待機 ----
     time.sleep(4)
 
-    # ---- Cleanup ----
+    # ---- 後片付け ----
     if feh_proc is not None and feh_proc.poll() is None:
         feh_proc.terminate()
 
@@ -10253,14 +10267,14 @@ def show_splash_screen():
 
 
 def interactive_mode():
-    """Interactive mode (with cover-art album browser)"""
+    """インタラクティブモード(ジャケット画像選曲対応)"""
     global output_device, current_playback_mode, current_audio_preset, current_gain_preset, loudness_normalization, tinnitus_reduction_mode, gapless_mode_enabled, upsampling_target_rate, musikverein_room_effects, air_particle_layer, CURRENT_VOLUME, musikverein_echo_mode, current_filter_preset
 
     db = safe_load_database()
     if db is None:
         return
 
-    print(f"\n==== Qji Music Player (output: {output_device}) ====")
+    print(f"\n==== 拡張版音楽再生システム (出力: {output_device}) ====")
 
     # ★★★ Now Playingミラーサーバーを自動起動 ★★★
     start_now_playing_server()
@@ -10283,73 +10297,73 @@ def interactive_mode():
         except:
             pass
         
-        print("\n🎵 Qji Music Player")
+        print("\n🎵 音楽再生システム")
         print("=" * 60)
-        print("Select a playback mode:")
-        print("  0. Random shuffle (all tracks)")
-        print("  1. Tempo-based playback")
-        print("  2. Composer-based playback")
-        print("  3. Performer-based playback")
-        print("  4. Conductor-based playback")
-        print("  5. Genre-based playback")
-        print("  6. Mood-based playback")
-        print("  7. 🔍 Keyword search")
-        print("  8. 🔷 Multi-filter search")
-        print("  9. 📊 Mood statistics")
-        print("  J. 🖼️  Browse by cover art")
-        print("  N. 🆕  Recently added (cover-art browser)")  # ★★★ 追加: 最新アルバム ★★★
-        print("  R. 📻 Radio stations")  # ★★★ 追加: ラジオ ★★★
-        print("  P. 💾 Preset management")  # ★★★ 追加 ★★★
-        print("  A. 🎚️ Audio preset")
-        print("  G. 🎛️ Gain preset")
-        print("  L. 🔊 Loudness normalisation")  # ★★★ 追加 ★★★
-        print("  T. 👂 Tinnitus-reduction mode (high-freq rolloff)")  # ★★★ 追加 ★★★
-        print(f"  W. 🌿 Air Particle Layer: {'ON 🌿' if air_particle_layer else 'OFF'}")  # ★★★ 追加 ★★★
-        print(f"  V. 🎻 Musikverein room effects: {'ON' if musikverein_room_effects else 'OFF'} (below golden reflections)")  # ★★★ 追加 ★★★
+        print("再生モードを選択してください:")
+        print("  0. すべての曲をランダム再生")
+        print("  1. テンポベース再生")
+        print("  2. 作曲家ベース再生")
+        print("  3. 演奏者ベース再生")
+        print("  4. 指揮者ベース再生")
+        print("  5. ジャンルベース再生")
+        print("  6. ムードベース再生")
+        print("  7. 🔍 キーワード検索")
+        print("  8. 🔷 複数条件で選曲")
+        print("  9. 📊 ムード統計を表示")
+        print("  J. 🖼️  ジャケット画像から選曲")
+        print("  N. 🆕  最近追加した音源10セット (ジャケット選曲)")  # ★★★ 追加: 最新アルバム ★★★
+        print("  R. 📻 ラジオステーション")  # ★★★ 追加: ラジオ ★★★
+        print("  P. 💾 プリセット管理 ★NEW★")  # ★★★ 追加 ★★★
+        print("  A. 🎚️ 音響プリセット設定")
+        print("  G. 🎛️ ゲインプリセット設定")
+        print("  L. 🔊 音量一定化オプション")  # ★★★ 追加 ★★★
+        print("  T. 👂 耳鳴り低減モード（高音域抑制）")  # ★★★ 追加 ★★★
+        print(f"  W. 🌿 音場調整 (Air Particle Layer): {'ON 🌿' if air_particle_layer else 'OFF'}")  # ★★★ 追加 ★★★
+        print(f"  V. 🎻 楽友協会ルームエフェクト: {'ON' if musikverein_room_effects else 'OFF'}（黄金反射以下）")  # ★★★ 追加 ★★★
         _fp_label = FILTER_PRESET_LABELS.get(current_filter_preset, current_filter_preset)
-        print(f"  F. 🎼 Filter preset (genre-based): {_fp_label}")  # ★★★ 追加 ★★★
-        echo_mode_label = 'Classical 🎻' if musikverein_echo_mode == 'classical' else 'Jazz/Vocal 🎷'
-        print(f"  E. 🎷 Echo mode: {echo_mode_label}")
-        print(f"  Z. 🔗 Gapless playback: {'ON' if gapless_mode_enabled else 'OFF'}")  # ★★★ 追加 ★★★
+        print(f"  F. 🎼 音響プリセット（ジャンル別）: {_fp_label}")  # ★★★ 追加 ★★★
+        echo_mode_label = 'クラシック 🎻' if musikverein_echo_mode == 'classical' else 'ジャズボーカル 🎷'
+        print(f"  E. 🎷 エコーモード: {echo_mode_label}")
+        print(f"  Z. 🔗 ギャップレス再生: {'ON' if gapless_mode_enabled else 'OFF'}")  # ★★★ 追加 ★★★
         upsampling_status = 'OFF' if upsampling_target_rate == 0 else f'{upsampling_target_rate//1000}kHz'
-        print(f"  U. 🎼 Upsampling: {upsampling_status}")  # ★★★ 追加 ★★★
-        print(f"  M. 📱 Now Playing mirror: {'ON ' + get_local_ip() + ':' + str(NOW_PLAYING_PORT) if now_playing_server_running else 'OFF'}")  # ★★★ 追加 ★★★
-        print("  QB. 🎵 Qobuz streaming")
-        print("  S. 🟠 SoundCloud streaming")  # ← この1行を追加 
-        print("  Y. 🔴 YouTube Music streaming")  # ★★★ 追加 ★★★
-        print("  AP. 📡 AirPlay receiver (from iPhone / Mac)")  # ★★★ AirPlay ★★★
-        print("  DL. 📻 UPnP/DLNA receiver (BubbleUPnP etc.)")  # ★★★ UPnP/DLNA ★★★
-        print("  Q. Quit")
+        print(f"  U. 🎼 アップサンプリング: {upsampling_status}")  # ★★★ 追加 ★★★
+        print(f"  M. 📱 Now Playingミラー: {'ON ' + get_local_ip() + ':' + str(NOW_PLAYING_PORT) if now_playing_server_running else 'OFF'}")  # ★★★ 追加 ★★★
+        print("  QB. 🎵 Qobuz ストリーミング再生")
+        print("  S. 🟠 SoundCloud ストリーミング")  # ← この1行を追加 
+        print("  Y. 🔴 YouTube Music ストリーミング")  # ★★★ 追加 ★★★
+        print("  AP. 📡 AirPlay レシーバー（iPhone / Mac から受信）")  # ★★★ AirPlay ★★★
+        print("  DL. 📻 UPnP/DLNA レシーバー（BubbleUPnP 等から受信）")  # ★★★ UPnP/DLNA ★★★
+        print("  Q. 終了")
         print("=" * 60)
-        print("💡 Press [q] during playback to return to this menu")
+        print("💡 再生中に [q] を押すとこのメニューに戻ります")
 
         try:
-            choice = input("\nChoice (0-9, J, N, M, R, P, A, G, L, T, W, V, F, E, Z, U, QB, S, Y, AP, DL, Q): ").strip().lower()
+            choice = input("\n選択 (0-9, J, N, M, R, P, A, G, L, T, W, V, F, E, Z, U, QB, S, Y, AP, DL, Q): ").strip().lower()
 
             if choice == '0':
-                print("\n🎵 Random shuffle mode — all tracks")
+                print("\n🎵 全曲ランダム再生モード")
                 db = safe_load_database()
                 if db:
                     all_tracks = db.copy()
                     random.shuffle(all_tracks)
                     playlist = all_tracks[:500] if len(all_tracks) > 500 else all_tracks
-                    print(f"✅ Playing {len(playlist)} tracks selected at random from {len(db)} in the database")
+                    print(f"✅ データベース全{len(db)}曲から{len(playlist)}曲をランダム選択して再生します")
                     play_music_with_mode_switching(playlist)
                 else:
-                    print("⚠️ Could not load database")
+                    print("⚠️ データベースが読み込めませんでした")
                 continue
 
             elif choice == 'a':
-                print("\n🎚️ Audio preset:")
-                print("  0. None (default)")
-                print("  1. Vocal forward")
-                print("  2. Soloist forward")
-                print("  3. Wide hall (subtle)")
-                print("  4. Natural chamber")
-                print("  5. Stage presence")
-                print("  6. Strings clarity")
+                print("\n🎚️ 音響プリセット:")
+                print("  0. なし(デフォルト)")
+                print("  1. ボーカルを前に")
+                print("  2. ソリストを前に")
+                print("  3. 広いホール(控えめ)")
+                print("  4. 自然な室内楽")
+                print("  5. ステージ感")
+                print("  6. 弦を綺麗に")
                 
-                preset_choice = input("\nSelect (0-6): ").strip()
+                preset_choice = input("\n選択 (0-6): ").strip()
                 preset_map = {
                     '0': 'none',
                     '1': 'vocal',
@@ -10363,285 +10377,285 @@ def interactive_mode():
                 if preset_choice in preset_map:
                     current_audio_preset = preset_map[preset_choice]
                     if current_audio_preset == 'none':
-                        print("✅ Preset: None (standard EQ)")
+                        print("✅ プリセット: なし(標準EQ)")
                     else:
-                        print(f"✅ Preset: {current_audio_preset}")
+                        print(f"✅ プリセット: {current_audio_preset}")
                 else:
-                    print("⚠️ Invalid selection")
+                    print("⚠️ 無効な選択です")
                 
                 continue
             
             # ★★★ ゲインプリセット設定メニューを追加 ★★★
             elif choice == 'g':
-                print("\n🎛️ Gain preset (input-stage level adjust):")
-                print("  1. Classical (0 dB — ideal for delicate strings etc.)")
-                print("  2. General (-1.5 dB — balanced, suits most genres)")
-                print("  3. Jazz / Pop (-3.5 dB — prevents distortion on loud material)")
-                print("  4. Loud material (-5 dB — high-level recordings, live, etc.)")
-                print(f"\nCurrent setting: {current_gain_preset}")
+                print("\n🎛️ ゲインプリセット（入力段階の音量調整）:")
+                print("  1. クラシック用 (0dB - ヴァイオリン等の繊細な音に最適)")
+                print("  2. 汎用 (-1.5dB - バランス型、様々なジャンルに対応)")
+                print("  3. ジャズ・ポップス用 (-3.5dB - 大きい音の歪みを防止)")
+                print("  4. ラウド素材用 (-5dB - 大音量録音・ライブ等)")
+                print(f"\n現在の設定: {current_gain_preset}")
                 
-                gain_choice = input("\nSelect (1-4): ").strip()
+                gain_choice = input("\n選択 (1-4): ").strip()
                 
                 if gain_choice == '1':
                     current_gain_preset = 'classical'
-                    print("✅ Gain preset: Classical (0 dB)")
+                    print("✅ ゲインプリセット: クラシック用 (0dB)")
                 elif gain_choice == '2':
                     current_gain_preset = 'general'
-                    print("✅ Gain preset: General (-1.5 dB)")
+                    print("✅ ゲインプリセット: 汎用 (-1.5dB)")
                 elif gain_choice == '3':
                     current_gain_preset = 'jazz_pop'
-                    print("✅ Gain preset: Jazz / Pop (-3.5 dB)")
+                    print("✅ ゲインプリセット: ジャズ・ポップス用 (-3.5dB)")
                 elif gain_choice == '4':
                     current_gain_preset = 'loud'
-                    print("✅ Gain preset: Loud material (-5 dB)")
+                    print("✅ ゲインプリセット: ラウド素材用 (-5dB)")
                 else:
-                    print("⚠️ Invalid selection")
+                    print("⚠️ 無効な選択です")
                 
                 continue
             
             # ★★★ 音量一定化オプション ★★★
             elif choice == 'l':
-                print("\n🔊 Loudness normalisation")
+                print("\n🔊 音量一定化（ラウドネスノーマライゼーション）")
                 print("=" * 60)
-                print("Reduces volume differences between tracks for a comfortable listening experience.")
+                print("曲ごとの音量差を小さくして、快適なリスニングを実現します。")
                 print("")
-                print("⚠️  Note:")
-                print("  - Slight reduction in dynamic punch is possible")
-                print("  - Dynamic range is compressed")
-                print("  - May not suit delicate material such as classical")
+                print("⚠️  注意:")
+                print("  - 音量を均一化するため、迫力が若干低下する場合があります")
+                print("  - ダイナミックレンジが圧縮されます")
+                print("  - クラシックなど繊細な曲には不向きな場合があります")
                 print("")
-                print(f"Current state: {'ON' if loudness_normalization else 'OFF'}")
+                print(f"現在の状態: {'ON (有効)' if loudness_normalization else 'OFF (無効)'}")
                 print("")
-                print("  1. Turn ON (normalise volume)")
-                print("  2. Turn OFF (keep original volume)")
+                print("  1. ON にする（音量を一定化）")
+                print("  2. OFF にする（元の音量を保持）")
                 
-                loud_choice = input("\nSelect (1-2): ").strip()
+                loud_choice = input("\n選択 (1-2): ").strip()
                 
                 if loud_choice == '1':
                     loudness_normalization = True
-                    print("✅ Loudness normalisation: ON")
-                    print("💡 Applied from the next track")
+                    print("✅ 音量一定化: ON")
+                    print("💡 次の曲から適用されます")
                 elif loud_choice == '2':
                     loudness_normalization = False
-                    print("✅ Loudness normalisation: OFF")
-                    print("💡 Original volume restored from next track")
+                    print("✅ 音量一定化: OFF")
+                    print("💡 次の曲から元の音量で再生されます")
                 else:
-                    print("⚠️ Invalid selection")
+                    print("⚠️ 無効な選択です")
                 
                 continue
             
             # ★★★ 耳鳴り低減モード ★★★
             elif choice == 't':
-                print("\n👂 Tinnitus-reduction mode (high-frequency rolloff)")
+                print("\n👂 耳鳴り低減モード（高音域抑制）")
                 print("=" * 60)
-                print("Gently rolls off frequencies above 10 kHz to reduce ear fatigue.")
-                print("Designed for listeners sensitive to high frequencies or experiencing tinnitus.")
+                print("10kHz以上の高音域を穏やかに抑制し、耳への刺激を軽減します。")
+                print("高音域に敏感な方、耳鳴りが気になる方向けの設定です。")
                 print("")
-                print("🎵 Changes:")
-                print("  - 10 kHz, 12 kHz boost → cut")
-                print("  - High-shelf filter added above 10 kHz (−1.5 dB)")
-                print("  - Preserves tonal character while reducing harshness")
+                print("🎵 変更点:")
+                print("  - 10kHz, 12kHzのブースト → カット")
+                print("  - 10kHz以上にハイシェルフフィルター追加(-1.5dB)")
+                print("  - 音の艶や透明感は維持しつつ、刺激を軽減")
                 print("")
-                print(f"Current state: {'ON (HF rolloff active)' if tinnitus_reduction_mode else 'OFF (normal)'}")
+                print(f"現在の状態: {'ON (高音域抑制)' if tinnitus_reduction_mode else 'OFF (通常)'}")
                 print("")
-                print("  1. Turn ON (roll off high frequencies)")
-                print("  2. Turn OFF (normal HF response)")
+                print("  1. ON にする（高音域を抑制）")
+                print("  2. OFF にする（通常の高音設定）")
                 
-                tinnitus_choice = input("\nSelect (1-2): ").strip()
+                tinnitus_choice = input("\n選択 (1-2): ").strip()
                 
                 if tinnitus_choice == '1':
                     tinnitus_reduction_mode = True
-                    print("✅ Tinnitus-reduction mode: ON")
-                    print("💡 Applied from the next track")
-                    print("👂 High-frequency harshness reduced")
+                    print("✅ 耳鳴り低減モード: ON")
+                    print("💡 次の曲から適用されます")
+                    print("👂 高音域の刺激が軽減されます")
                 elif tinnitus_choice == '2':
                     tinnitus_reduction_mode = False
-                    print("✅ Tinnitus-reduction mode: OFF")
-                    print("💡 Normal HF response restored")
+                    print("✅ 耳鳴り低減モード: OFF")
+                    print("💡 通常の高音設定に戻ります")
                 else:
-                    print("⚠️ Invalid selection")
+                    print("⚠️ 無効な選択です")
                 
                 continue
             
             # ★★★ 音響プリセット（ジャンル別フィルター）切り替え ★★★
             elif choice == 'f':
-                print("\n🎼 Filter preset (genre-based)")
+                print("\n🎼 音響プリセット（ジャンル別）")
                 print("=" * 60)
-                print("Select a filter chain to match the genre of your music.")
-                print("Applied from the next track.\n")
+                print("曲のジャンルに合わせたフィルターチェーンを選択します。")
+                print("次の曲から適用されます。\n")
                 _fp_keys = list(FILTER_PRESET_LABELS.keys())
                 for i, k in enumerate(_fp_keys, 1):
                     mark = '▶' if k == current_filter_preset else ' '
                     print(f"  {i}. {mark} {FILTER_PRESET_LABELS[k]}")
                 print("")
-                fp_choice = input("Select number (Enter to cancel): ").strip()
+                fp_choice = input("番号を選択 (Enterでキャンセル): ").strip()
                 if fp_choice.isdigit() and 1 <= int(fp_choice) <= len(_fp_keys):
                     current_filter_preset = _fp_keys[int(fp_choice) - 1]
-                    print(f"✅ Filter preset → {FILTER_PRESET_LABELS[current_filter_preset]}")
-                    print("💡 Applied from the next track")
+                    print(f"✅ 音響プリセット → {FILTER_PRESET_LABELS[current_filter_preset]}")
+                    print("💡 次の曲から適用されます")
                 elif fp_choice == '':
-                    print("⚪ Cancelled")
+                    print("⚪ キャンセルしました")
                 else:
-                    print("⚠️ Invalid selection")
+                    print("⚠️ 無効な選択です")
                 continue
 
             # ★★★ 楽友協会ルームエフェクト ON/OFF ★★★
             elif choice == 'v':
-                print("\n🎻 Musikverein room-effect settings")
+                print("\n🎻 楽友協会ルームエフェクト設定")
                 print("=" * 60)
-                print("Golden reflections (early reflections ①②) are kept;")
-                print("everything below them is toggled on/off together.")
+                print("黄金反射（初期反射①②）はそのままに、")
+                print("それ以下の設定を一括オン/オフします。")
                 print("")
-                print("[Disabled when OFF]")
-                print("  - Room volume (acompressor)")
-                print("  - Low-end: floor and box resonance (aecho 29 ms)")
-                print("  - Bass damping (45 Hz / 80 Hz)")
-                print("  - Tinnitus-reduction high-shelf")
-                print("  - High-end sheen (treble)")
-                print("  - Stage brightness (EQ 2800 Hz)")
-                print("  - Conductor presence (EQ 1800 Hz)")
+                print("【オフにすると無効になるもの】")
+                print("  - 空間の体積（acompressor）")
+                print("  - 低域：床と箱鳴り（aecho 29ms）")
+                print("  - 低域制動（bass 45Hz / 80Hz）")
+                print("  - 耳鳴り低減モードのhighshelf")
+                print("  - 高域の艶（treble）")
+                print("  - 舞台の明るさ（equalizer 2800Hz）")
+                print("  - 指揮者の存在感（equalizer 1800Hz）")
                 print("")
-                print(f"Current state: {'ON' if musikverein_room_effects else 'OFF'}")
+                print(f"現在の状態: {'ON（有効）' if musikverein_room_effects else 'OFF（無効）'}")
                 print("")
-                print("  1. Turn ON (all room effects active)")
-                print("  2. Turn OFF (golden reflections only)")
+                print("  1. ON にする（ルームエフェクト全有効）")
+                print("  2. OFF にする（黄金反射のみ残す）")
                 
-                v_choice = input("\nSelect (1-2): ").strip()
+                v_choice = input("\n選択 (1-2): ").strip()
                 
                 if v_choice == '1':
                     musikverein_room_effects = True
                     CURRENT_VOLUME = 12
-                    print("✅ Musikverein room effects: ON")
-                    print(f"🔊 Output volume set to {CURRENT_VOLUME} dB")
-                    print("💡 Applied from the next track")
+                    print("✅ 楽友協会ルームエフェクト: ON")
+                    print(f"🔊 出力音量を {CURRENT_VOLUME}dB に設定しました")
+                    print("💡 次の曲から適用されます")
                 elif v_choice == '2':
                     musikverein_room_effects = False
                     CURRENT_VOLUME = 6
-                    print("✅ Musikverein room effects: OFF (early reflections only)")
-                    print(f"🔊 Output volume auto-adjusted to {CURRENT_VOLUME} dB")
-                    print("💡 Applied from the next track")
+                    print("✅ 楽友協会ルームエフェクト: OFF（初期反射のみ）")
+                    print(f"🔊 出力音量を {CURRENT_VOLUME}dB に自動調整しました")
+                    print("💡 次の曲から適用されます")
                 else:
-                    print("⚠️ Invalid selection")
+                    print("⚠️ 無効な選択です")
                 
                 continue
             
             elif choice == 'e':  # ★★★ エコーモード切替 ★★★
-                print("\n🎷 Echo mode (Musikverein echo level):")
+                print("\n🎷 エコーモード（楽友協会エフェクトのエコー量）:")
                 print("=" * 60)
-                print("  Classical: full echo (best for strings / orchestra)")
-                print("  Jazz/Vocal: ~40 % echo reduction (best for vocals / jazz)")
+                print("  クラシック: フルエコー（弦楽・管弦楽に最適）")
+                print("  ジャズボーカル: エコー約40%低減（ボーカル・ジャズに最適）")
                 print("")
-                print(f"Current setting: {'Classical 🎻' if musikverein_echo_mode == 'classical' else 'Jazz/Vocal 🎷'}")
+                print(f"現在の設定: {'クラシック 🎻' if musikverein_echo_mode == 'classical' else 'ジャズボーカル 🎷'}")
                 print("")
-                print("  1. Classical 🎻 (default)")
-                print("  2. Jazz/Vocal 🎷")
+                print("  1. クラシック 🎻（デフォルト）")
+                print("  2. ジャズボーカル 🎷")
 
-                echo_choice = input("\nSelect (1-2): ").strip()
+                echo_choice = input("\n選択 (1-2): ").strip()
                 if echo_choice == '1':
                     musikverein_echo_mode = 'classical'
-                    print("✅ Echo mode: Classical 🎻")
+                    print("✅ エコーモード: クラシック 🎻")
                 elif echo_choice == '2':
                     musikverein_echo_mode = 'jazz_vocal'
-                    print("✅ Echo mode: Jazz/Vocal 🎷")
+                    print("✅ エコーモード: ジャズボーカル 🎷")
                 else:
-                    print("⚠️ Invalid selection")
+                    print("⚠️ 無効な選択です")
                 continue
 
             elif choice == 'w':
                 # ★★★ 音場調整（Air Particle Layer）メニュー ★★★
-                print("\n🌿 Air Particle Layer settings")
+                print("\n🌿 音場調整 - Air Particle Layer 設定")
                 print("=" * 60)
-                print("Mixes an ultra-faint trace of pink noise (air-particle layer) to")
-                print("widen the soundstage and ease high-frequency tinnitus.")
-                print("※ Only active when V (Musikverein effects) is ON.")
+                print("ピンクノイズ（空気粒子層）を極微量ミックスすることで、")
+                print("音場を調整し高音性の耳鳴りを和らげる効果があります。")
+                print("※ V（楽友協会エフェクト）が ON の場合のみ有効です。")
                 print("")
-                print(f"Current state: {'ON 🌿' if air_particle_layer else 'OFF'}")
-                print(f"Musikverein effects (V): {'ON' if musikverein_room_effects else 'OFF (must be ON)'}")
+                print(f"現在の状態: {'ON 🌿' if air_particle_layer else 'OFF'}")
+                print(f"楽友協会エフェクト(V): {'ON（有効）' if musikverein_room_effects else 'OFF（要ON）'}")
                 print("")
-                print("  1. Turn ON")
-                print("  2. Turn OFF")
+                print("  1. ON にする")
+                print("  2. OFF にする")
 
-                apl_choice = input("\nSelect (1-2): ").strip()
+                apl_choice = input("\n選択 (1-2): ").strip()
 
                 if apl_choice == '1':
                     air_particle_layer = True
-                    print("✅ Air Particle Layer: ON 🌿")
-                    print("💡 Applied from the next track")
+                    print("✅ 音場調整 (Air Particle Layer): ON 🌿")
+                    print("💡 次の曲から適用されます")
                 elif apl_choice == '2':
                     air_particle_layer = False
-                    print("✅ Air Particle Layer: OFF")
-                    print("💡 Applied from the next track")
+                    print("✅ 音場調整 (Air Particle Layer): OFF")
+                    print("💡 次の曲から適用されます")
                 else:
-                    print("⚠️ Invalid selection")
+                    print("⚠️ 無効な選択です")
 
                 continue
 
             elif choice == 'z':
                 print("=" * 60)
-                print("In folder mode and cover-art mode,")
-                print("plays tracks continuously with no silence between them.")
+                print("フォルダーモードとジャケット選択モードで、")
+                print("曲と曲の間に無音区間がないギャップレス再生を行います。")
                 print("")
-                print(f"Current state: {'ON' if gapless_mode_enabled else 'OFF'}")
+                print(f"現在の状態: {'ON' if gapless_mode_enabled else 'OFF'}")
                 print("")
-                print("  1. Turn ON (gapless)")
-                print("  2. Turn OFF (normal)")
+                print("  1. ON にする（ギャップレス再生）")
+                print("  2. OFF にする（通常再生）")
                 
-                gapless_choice = input("\nSelect (1-2): ").strip()
+                gapless_choice = input("\n選択 (1-2): ").strip()
                 
                 if gapless_choice == '1':
                     gapless_mode_enabled = True
-                    print("✅ Gapless mode: ON")
-                    print("💡 Applied in folder mode / cover-art mode")
-                    print("🎵 Continuous playback with no silence between tracks")
+                    print("✅ ギャップレス再生モード: ON")
+                    print("💡 フォルダーモード/ジャケット選択モードで適用されます")
+                    print("🎵 曲間に無音がない連続再生になります")
                 elif gapless_choice == '2':
                     gapless_mode_enabled = False
-                    print("✅ Gapless mode: OFF")
-                    print("💡 Returning to normal playback")
+                    print("✅ ギャップレス再生モード: OFF")
+                    print("💡 通常再生に戻ります")
                 else:
-                    print("⚠️ Invalid selection")
+                    print("⚠️ 無効な選択です")
                 
                 continue
             
             elif choice == 'u':
-                print("\n🎼 Upsampling settings")
+                print("\n🎼 アップサンプリング設定")
                 print("=" * 60)
-                print("Upsamples all audio to a higher sample rate before playback.")
+                print("すべての音源を高いサンプリングレートにアップサンプリングして再生します。")
                 print("")
-                print("✨ Benefits:")
-                print("  - May reduce roughness in the upper midrange")
-                print("  - May allow the DAC to operate in a more optimal range")
-                print("  - Effective for 44.1 kHz, 48 kHz, 96 kHz and similar sources")
+                print("✨ 効果:")
+                print("  - 中高音域のざらつきが軽減される場合があります")
+                print("  - DACの動作が最適化される可能性があります")
+                print("  - 44.1kHz、48kHz、96kHzなどの音源に有効です")
                 print("")
-                print("⚠️  Note:")
-                print("  - Does not add information beyond what is in the source")
-                print("  - Higher rates increase CPU load")
+                print("⚠️  注意:")
+                print("  - 元の音源よりも高い情報量が生まれるわけではありません")
+                print("  - 高いサンプリングレートほどCPU負荷が増加します")
                 print("")
-                current_status = 'OFF (original rate)' if upsampling_target_rate == 0 else f'converting to {upsampling_target_rate//1000} kHz'
-                print(f"Current state: {current_status}")
+                current_status = 'OFF (元のまま)' if upsampling_target_rate == 0 else f'{upsampling_target_rate//1000}kHz に変換'
+                print(f"現在の状態: {current_status}")
                 print("")
-                print("  1. Upsample to 192 kHz")
-                print("  2. Upsample to 384 kHz (smoother)")
-                print("  3. OFF (keep original sample rate)")
+                print("  1. 192kHz にアップサンプリング")
+                print("  2. 384kHz にアップサンプリング（より滑らか）")
+                print("  3. OFF（元のサンプリングレートを保持）")
                 
-                upsample_choice = input("\nSelect (1-3): ").strip()
+                upsample_choice = input("\n選択 (1-3): ").strip()
                 
                 if upsample_choice == '1':
                     upsampling_target_rate = 192000
-                    print("✅ Upsampling: 192 kHz")
-                    print("💡 192 kHz from next track")
-                    print("🎵 Upper-midrange smoothing expected")
+                    print("✅ アップサンプリング: 192kHz")
+                    print("💡 次の曲から192kHzで再生されます")
+                    print("🎵 中高音域のざらつき軽減が期待できます")
                 elif upsample_choice == '2':
                     upsampling_target_rate = 384000
-                    print("✅ Upsampling: 384 kHz")
-                    print("💡 384 kHz from next track")
-                    print("🎵 Further smoothing expected")
-                    print("⚠️  High CPU load")
+                    print("✅ アップサンプリング: 384kHz")
+                    print("💡 次の曲から384kHzで再生されます")
+                    print("🎵 さらに滑らかな音質が期待できます")
+                    print("⚠️  CPU負荷が高くなります")
                 elif upsample_choice == '3':
                     upsampling_target_rate = 0
-                    print("✅ Upsampling: OFF")
-                    print("💡 Playing at original sample rate")
+                    print("✅ アップサンプリング: OFF")
+                    print("💡 元のサンプリングレートで再生します")
                 else:
-                    print("⚠️ Invalid selection")
+                    print("⚠️ 無効な選択です")
                 
                 continue
 
@@ -10649,13 +10663,13 @@ def interactive_mode():
                 current_playback_mode = 'tempo'
                 tempo = get_tempo_input(timeout_seconds=20)
                 if tempo:
-                    print(f"\n🔍 Searching for tracks at {tempo} ±10 BPM...")
+                    print(f"\n🔍 テンポ {tempo}±10 BPMの曲を検索中...")
                     playlist = get_tracks_by_tempo(tempo, tolerance=10, limit=200)
                     if playlist:
-                        print(f"✅ Found {len(playlist)} track(s)")
+                        print(f"✅ {len(playlist)}曲が見つかりました")
                         play_music_with_mode_switching(playlist)
                     else:
-                        print(f"⚠ No tracks found at {tempo} ±10 BPM")
+                        print(f"⚠ テンポ {tempo}±10 BPMの曲が見つかりませんでした")
 
             elif choice == '2':
                 current_playback_mode = 'composer'
@@ -10663,17 +10677,17 @@ def interactive_mode():
                 if options:
                     composer = interactive_search_with_curses(options, mode='composer')
                 else:
-                    print("⚠️ No composer data in database")
+                    print("⚠️ 作曲家データがありません")
                     composer = None
     
                 if composer:
-                    print(f"\n🔍 Searching for tracks by composer '{composer}'...")
+                    print(f"\n🔍 作曲家'{composer}'の曲を検索中...")
                     playlist = get_tracks_by_composer(composer, limit=200)
                     if playlist:
-                        print(f"✅ Found {len(playlist)} track(s)")
+                        print(f"✅ {len(playlist)}曲が見つかりました")
                         play_music_with_mode_switching(playlist)
                     else:
-                        print(f"⚠️ No tracks found for composer '{composer}'")
+                        print(f"⚠️ 作曲家'{composer}'の曲が見つかりませんでした")
 
             elif choice == '3':
                 current_playback_mode = 'performer'
@@ -10681,17 +10695,17 @@ def interactive_mode():
                 if options:
                     performer = interactive_search_with_curses(options, mode='performer')
                 else:
-                    print("⚠️ No performer data in database")
+                    print("⚠️ 演奏者データがありません")
                     performer = None
     
                 if performer:
-                    print(f"\n🔍 Searching for tracks by performer '{performer}'...")
+                    print(f"\n🔍 演奏者'{performer}'の曲を検索中...")
                     playlist = get_tracks_by_performer(performer, limit=200)
                     if playlist:
-                        print(f"✅ Found {len(playlist)} track(s)")
+                        print(f"✅ {len(playlist)}曲が見つかりました")
                         play_music_with_mode_switching(playlist)
                     else:
-                        print(f"⚠️ No tracks found for performer '{performer}'")
+                        print(f"⚠️ 演奏者'{performer}'の曲が見つかりませんでした")
 
             elif choice == '4':
                 current_playback_mode = 'conductor'
@@ -10699,17 +10713,17 @@ def interactive_mode():
                 if options:
                     conductor = interactive_search_with_curses(options, mode='conductor')
                 else:
-                    print("⚠️ No conductor data in database")
+                    print("⚠️ 指揮者データがありません")
                     conductor = None
     
                 if conductor:
-                    print(f"\n🔍 Searching for tracks by conductor '{conductor}'...")
+                    print(f"\n🔍 指揮者'{conductor}'の曲を検索中...")
                     playlist = get_tracks_by_conductor(conductor, limit=200)
                     if playlist:
-                        print(f"✅ Found {len(playlist)} track(s)")
+                        print(f"✅ {len(playlist)}曲が見つかりました")
                         play_music_with_mode_switching(playlist)
                     else:
-                        print(f"⚠️ No tracks found for conductor '{conductor}'")
+                        print(f"⚠️ 指揮者'{conductor}'の曲が見つかりませんでした")
 
             elif choice == '5':
                 current_playback_mode = 'genre'
@@ -10717,73 +10731,73 @@ def interactive_mode():
                 if options:
                     genre = interactive_search_with_curses(options, mode='genre')
                 else:
-                    print("⚠️ No genre data in database")
+                    print("⚠️ ジャンルデータがありません")
                     genre = None
     
                 if genre:
-                    print(f"\n🔍 Searching for tracks in genre '{genre}'...")
+                    print(f"\n🔍 ジャンル'{genre}'の曲を検索中...")
                     playlist = get_tracks_by_genre(genre, limit=200)
                     if playlist:
-                        print(f"✅ Found {len(playlist)} track(s)")
+                        print(f"✅ {len(playlist)}曲が見つかりました")
                         play_music_with_mode_switching(playlist)
                     else:
-                        print(f"⚠️ No tracks found for genre '{genre}'")
+                        print(f"⚠️ ジャンル'{genre}'の曲が見つかりませんでした")
 
             elif choice == '6':
                 current_playback_mode = 'mood'
                 
-                print("\n🎭 Mood selection:")
-                print("  1. Select by individual mood")
-                print("  2. Select by mood group")
+                print("\n🎭 ムード選択:")
+                print("  1. 個別ムードで選択")
+                print("  2. ムードグループで選択")
                 
-                mood_choice = input("Select (1/2): ").strip()
+                mood_choice = input("選択 (1/2): ").strip()
                 
                 if mood_choice == '2':
-                    print("\n🔍 Mood groups:")
-                    print("  1. Positive (bright, energetic)")
-                    print("  2. Negative (melancholy, intense)")
-                    print("  3. Neutral (calm, ambient, moderate)")
+                    print("\n🔍 ムードグループ:")
+                    print("  1. ポジティブ (明るい・エネルギッシュ)")
+                    print("  2. ネガティブ (メランコリー・激しい)")
+                    print("  3. ニュートラル (穏やか・環境音楽・普通)")
                     
-                    group_choice = input("Select (1-3): ").strip()
+                    group_choice = input("選択 (1-3): ").strip()
                     group_map = {'1': 'positive', '2': 'negative', '3': 'neutral'}
                     group_name = group_map.get(group_choice)
                     
                     if group_name:
-                        print(f"\n🔍 Searching for tracks in mood group '{group_name}'...")
+                        print(f"\n🔍 {group_name}グループの曲を検索中...")
                         playlist = get_tracks_by_mood_group(group_name, limit=200)
                         if playlist:
-                            print(f"✅ Found {len(playlist)} track(s)")
+                            print(f"✅ {len(playlist)}曲が見つかりました")
                             play_music_with_mode_switching(playlist)
                         else:
-                            print(f"⚠️ No tracks found in mood group '{group_name}'")
+                            print(f"⚠️ {group_name}グループの曲が見つかりませんでした")
                 else:
                     options = get_available_options(mode='mood')
                     if options:
                         mood = interactive_search_with_curses(options, mode='mood')
                     else:
-                        print("⚠️ No mood data in database")
+                        print("⚠️ ムードデータがありません")
                         mood = None
         
                     if mood:
-                        print(f"\n🔍 Searching for tracks with mood '{mood}'...")
+                        print(f"\n🔍 ムード'{mood}'の曲を検索中...")
                         playlist = get_tracks_by_mood(mood, limit=200)
                         if playlist:
-                            print(f"✅ Found {len(playlist)} track(s)")
+                            print(f"✅ {len(playlist)}曲が見つかりました")
                             play_music_with_mode_switching(playlist)
                         else:
-                            print(f"⚠️ No tracks found with mood '{mood}'")
+                            print(f"⚠️ ムード'{mood}'の曲が見つかりませんでした")
 
             elif choice == '7':
                 current_playback_mode = 'keyword'
-                print("\n🔍 Keyword search mode")
+                print("\n🔍 キーワード検索モード")
                 print("=" * 60)
-                print("Searches: title, artist, composer, performer, conductor,")
-                print("         genre, mood, filename, folder path")
+                print("検索対象: タイトル、アーティスト、作曲者、演奏者、指揮者、")
+                print("         ジャンル、ムード、ファイル名、フォルダパス")
                 print("=" * 60)
-                print("e.g.: disney, bach, beethoven, symphony, etc.")
-                print("💡 Enter 'debug:keyword' for verbose output")
+                print("例: disney, bach, beethoven, symphony, 交響曲 など")
+                print("💡 'debug:キーワード' と入力すると詳細情報を表示します")
                 
-                keyword_input = input("\nEnter keyword: ").strip()
+                keyword_input = input("\nキーワードを入力: ").strip()
                 
                 if keyword_input:
                     debug_mode = False
@@ -10793,11 +10807,11 @@ def interactive_mode():
                     else:
                         keyword = keyword_input
                     
-                    print(f"\n🔍 Searching for '{keyword}'...")
+                    print(f"\n🔍 キーワード '{keyword}' で検索中...")
                     playlist = get_tracks_by_keyword(keyword, limit=200, debug=debug_mode)
                     
                     if playlist:
-                        print(f"\n✅ Found {len(playlist)} track(s)")
+                        print(f"\n✅ {len(playlist)}曲が見つかりました")
                         
                         reason_count = {}
                         for track in playlist:
@@ -10806,72 +10820,72 @@ def interactive_mode():
                                 reason_count[r] = reason_count.get(r, 0) + 1
                         
                         if reason_count:
-                            print("\n📊 Match breakdown:")
+                            print("\n📊 マッチ箇所の内訳:")
                             reason_names = {
-                                'title': 'Title',
-                                'artist': 'Artist',
-                                'composer': 'Composer',
-                                'performer': 'Performer',
-                                'conductor': 'Conductor',
-                                'genre': 'Genre',
-                                'mood': 'Mood',
-                                'filename': 'Filename',
-                                'path': 'Folder path'
+                                'title': 'タイトル',
+                                'artist': 'アーティスト',
+                                'composer': '作曲者',
+                                'performer': '演奏者',
+                                'conductor': '指揮者',
+                                'genre': 'ジャンル',
+                                'mood': 'ムード',
+                                'filename': 'ファイル名',
+                                'path': 'フォルダパス'
                             }
                             for reason, count in sorted(reason_count.items(), key=lambda x: x[1], reverse=True):
-                                print(f"  {reason_names.get(reason, reason)}: {count}")
+                                print(f"  {reason_names.get(reason, reason)}: {count}件")
                         
-                        print("\n📋 Sample results (first 10):")
+                        print("\n📋 検索結果サンプル(最初の10曲):")
                         for i, track in enumerate(playlist[:10], 1):
                             reasons = track.get('_match_reason', [])
                             reason_str = ','.join(reasons)
                             print(f"  {i:2d}. {track.get('title', 'Unknown'):40} [{reason_str}]")
                             print(f"      {track.get('artist', 'Unknown')}")
                         if len(playlist) > 10:
-                            print(f"  ... and {len(playlist) - 10} more")
+                            print(f"  ... 他 {len(playlist) - 10} 曲")
                         
-                        confirm = input(f"\n▶️ Play these {len(playlist)} track(s)? (y/n): ").strip().lower()
+                        confirm = input(f"\n▶️ これら{len(playlist)}曲を再生しますか? (y/n): ").strip().lower()
                         if confirm == 'y' or confirm == '':
                             play_music_with_mode_switching(playlist)
                     else:
-                        print(f"\n⚠️ No tracks matched '{keyword}'")
-                        print("\n💡 Troubleshooting:")
-                        print("  1. Try 'debug:keyword' for verbose output")
-                        print("  2. Check that metadata is correctly registered in the database")
-                        print("  3. Check that the filename or folder name contains the search string")
+                        print(f"\n⚠️ キーワード '{keyword}' に一致する曲が見つかりませんでした")
+                        print("\n💡 トラブルシューティング:")
+                        print("  1. 'debug:キーワード' で詳細検索を試してください")
+                        print("  2. データベースにメタデータが正しく登録されているか確認")
+                        print("  3. ファイル名やフォルダ名に該当文字列が含まれているか確認")
                 else:
-                    print("⚠️ No keyword entered")
+                    print("⚠️ キーワードが入力されませんでした")
 
             elif choice == '8':
                 filters = {}
-                print("\n🔷 Multi-filter search. Available filters:")
-                print("   1: Tempo")
-                print("   2: Composer")
-                print("   3: Performer")
-                print("   4: Conductor")
-                print("   5: Genre")
-                print("   6: Mood")
-                print("💡 e.g. enter '1,2' to combine tempo and composer")
-                sel = input("Enter filter numbers separated by commas (e.g. 1,2) or 'back': ").strip()
+                print("\n🔷 複数条件で選曲します。使用可能な条件:")
+                print("   1: テンポ")
+                print("   2: 作曲家")
+                print("   3: 演奏者")
+                print("   4: 指揮者")
+                print("   5: ジャンル")
+                print("   6: ムード")
+                print("💡 例: '1,2' と入力するとテンポと作曲家を組み合わせて検索します")
+                sel = input("条件番号をカンマ区切りで入力 (例: 1,2) または 'back'で戻る: ").strip()
                 if sel.lower() == 'back' or sel == '':
                     continue
                 selected = [s.strip() for s in sel.split(',') if s.strip() in ['1','2','3','4','5','6']]
                 if not selected:
-                    print("⚠ Invalid selection")
+                    print("⚠ 無効な選択です")
                     continue
 
                 for s in selected:
                     if s == '1':
                         tempo = get_tempo_input(timeout_seconds=20)
                         if tempo:
-                            tol_input = input("Tempo tolerance in BPM (default 10): ").strip()
+                            tol_input = input("テンポ許容範囲をBPMで入力 (デフォルト 10): ").strip()
                             try:
                                 tol = int(tol_input) if tol_input != '' else 10
                             except:
                                 tol = 10
                             filters['tempo'] = (tempo, tol)
                         else:
-                            print("⚠ No tempo entered — filter removed.")
+                            print("⚠ テンポ入力がありません。条件から除外します。")
                     elif s == '2':
                         options = get_available_options(mode='composer')
                         if options:
@@ -10879,9 +10893,9 @@ def interactive_mode():
                             if composer:
                                 filters['composer'] = composer
                             else:
-                                print("⚠ No composer entered — filter removed.")
+                                print("⚠ 作曲家入力がありません。条件から除外します。")
                         else:
-                            print("⚠️ No composer data — filter removed.")
+                            print("⚠️ 作曲家データがありません。条件から除外します。")
                     elif s == '3':
                         options = get_available_options(mode='performer')
                         if options:
@@ -10889,9 +10903,9 @@ def interactive_mode():
                             if performer:
                                 filters['performer'] = performer
                             else:
-                                print("⚠ No performer entered — filter removed.")
+                                print("⚠ 演奏者入力がありません。条件から除外します。")
                         else:
-                            print("⚠️ No performer data — filter removed.")
+                            print("⚠️ 演奏者データがありません。条件から除外します。")
                     elif s == '4':
                         options = get_available_options(mode='conductor')
                         if options:
@@ -10899,9 +10913,9 @@ def interactive_mode():
                             if conductor:
                                 filters['conductor'] = conductor
                             else:
-                                print("⚠ No conductor entered — filter removed.")
+                                print("⚠ 指揮者入力がありません。条件から除外します。")
                         else:
-                            print("⚠️ No conductor data — filter removed.")
+                            print("⚠️ 指揮者データがありません。条件から除外します。")
                     elif s == '5':
                         options = get_available_options(mode='genre')
                         if options:
@@ -10909,9 +10923,9 @@ def interactive_mode():
                             if genre:
                                 filters['genre'] = genre
                             else:
-                                print("⚠ No genre entered — filter removed.")
+                                print("⚠ ジャンル入力がありません。条件から除外します。")
                         else:
-                            print("⚠️ No genre data — filter removed.")
+                            print("⚠️ ジャンルデータがありません。条件から除外します。")
                     elif s == '6':
                         options = get_available_options(mode='mood')
                         if options:
@@ -10919,25 +10933,25 @@ def interactive_mode():
                             if mood:
                                 filters['mood'] = mood
                             else:
-                                print("⚠ No mood entered — filter removed.")
+                                print("⚠ ムード入力がありません。条件から除外します。")
                         else:
-                            print("⚠️ No mood data — filter removed.")
+                            print("⚠️ ムードデータがありません。条件から除外します。")
 
                 if not filters:
-                    print("⚠ No filters specified — returning.")
+                    print("⚠ 条件が指定されていません。戻ります。")
                     continue
 
-                print(f"\n🔍 Searching with filters: {filters}")
+                print(f"\n🔍 以下の条件で検索します: {filters}")
                 playlist = get_tracks_by_filters(filters, limit=500)
                 if playlist:
-                    print(f"✅ Found {len(playlist)} tracks (shuffled, up to 500)")
+                    print(f"✅ {len(playlist)}曲が見つかりました (上限500件をシャッフルして再生します)")
                     play_music_with_mode_switching(playlist)
                 else:
-                    print("⚠ No tracks matched the specified filters")
+                    print("⚠ 指定した条件に一致する曲が見つかりませんでした")
 
             elif choice == '9':
                 show_mood_statistics()
-                input("\nPress Enter to return to menu...")
+                input("\nEnterキーを押してメニューに戻る...")
                 continue
 
             elif choice == 'j':  # ← ジャケット画像選曲
@@ -10946,26 +10960,26 @@ def interactive_mode():
                 current_folder_tracks = []
                 current_playlist = []
                 
-                print("\n🖼️  Browse by cover art")
+                print("\n🖼️  ジャケット画像選曲")
                 print("=" * 60)
-                print("Select:")
-                print("  1. Browse all albums by cover art")
-                print("  2. Filter first, then browse by cover art")
+                print("選択してください:")
+                print("  1. 全アルバムのジャケット画像から選択")
+                print("  2. 条件を絞ってからジャケット画像から選択")
                 
-                cover_choice = input("\nSelect (1/2): ").strip()
+                cover_choice = input("\n選択 (1/2): ").strip()
                 
                 if cover_choice == '1':
                     # ★★★ 修正箇所 ★★★
                     select_album_by_cover_image_loop(mode='all')
                 
                 elif cover_choice == '2':
-                    print("\n📋 Select a filter:")
-                    print("  1. Filter by composer")
-                    print("  2. Filter by genre")
-                    print("  3. Filter by mood")
-                    print("  4. Filter by keyword search")  # ★★★ 追加 ★★★
+                    print("\n📋 絞り込み条件を選択してください:")
+                    print("  1. 作曲家で絞り込み")
+                    print("  2. ジャンルで絞り込み")
+                    print("  3. ムードで絞り込み")
+                    print("  4. キーワード検索で絞り込み")  # ★★★ 追加 ★★★
         
-                    filter_choice = input("\nSelect (1-4): ").strip()
+                    filter_choice = input("\n選択 (1-4): ").strip()
                     filters = {}
         
                     if filter_choice == '1':
@@ -10991,27 +11005,27 @@ def interactive_mode():
                     
                     # ★★★ キーワード検索を追加 ★★★
                     elif filter_choice == '4':
-                        keyword = input("\n🔍 Enter keyword: ").strip()
+                        keyword = input("\n🔍 キーワードを入力してください: ").strip()
                         if keyword:
                             filters['keyword'] = keyword
-                            print(f"✓ Filtering by keyword '{keyword}'")
+                            print(f"✓ キーワード '{keyword}' で絞り込みます")
                         else:
-                            print("⚠️ No keyword entered")
+                            print("⚠️ キーワードが入力されませんでした")
         
                     if filters:
                         # ★★★ 修正箇所 ★★★
                         select_album_by_cover_image_loop(mode='filtered', filters=filters)
                     else:
-                        print("⚠️ No filter specified")
+                        print("⚠️ 条件が指定されませんでした")
 
             elif choice == 'n':  # ★★★ 最近追加した音源 ジャケット選曲 ★★★
                 cleanup_processes()
                 current_folder_tracks = []
                 current_playlist = []
 
-                print("\n🆕  Recently added — cover-art browser")
+                print("\n🆕  最近追加した音源 ジャケット選曲")
                 print("=" * 60)
-                n_input = input("Number of sets to show (default 10): ").strip()
+                n_input = input("表示するセット数を入力 (デフォルト10): ").strip()
                 try:
                     n_count = int(n_input) if n_input.isdigit() and int(n_input) > 0 else 10
                 except:
@@ -11021,7 +11035,7 @@ def interactive_mode():
             elif choice == 'm':  # ★★★ Now Playing ミラーサーバー ★★★
                 if now_playing_server_running:
                     stop_now_playing_server()
-                    print("\n📱 Now Playing mirror stopped")
+                    print("\n📱 Now Playingミラーを停止しました")
                 else:
                     start_now_playing_server()
                 continue
@@ -11093,18 +11107,18 @@ def interactive_mode():
                 )
 
             elif choice == 'q':
-                print("👋 Exiting Qji Music Player")
+                print("👋 音楽再生システムを終了します")
                 stop_now_playing_server()  # ★★★ ミラーサーバー停止 ★★★
                 break
 
             else:
-                print("⚠️ Invalid selection")
+                print("⚠️ 無効な選択です")
         
         except (EOFError, KeyboardInterrupt):
-            print("\n👋 Exiting Qji Music Player")
+            print("\n👋 音楽再生システムを終了します")
             break
         except Exception as e:
-            print(f"⚠️ Error: {e}")
+            print(f"⚠️ エラー: {e}")
             # エラー時もバッファクリア
             try:
                 import termios
@@ -11122,26 +11136,26 @@ def interactive_mode():
         pass
     
     cleanup_processes()
-    print("✅ System exited cleanly")
+    print("✅ システムを正常に終了しました")
     # ★★★ サウンドデバイス等の内部スレッドによるハングを防ぐため強制終了 ★★★
     os._exit(0)
 
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Qji Music Player (with cover-art browser)")
-    parser.add_argument('--tempo', type=int, help='Specify tempo (BPM) directly (can be combined)')
-    parser.add_argument('--tempo-tol', type=int, default=10, help='Tempo tolerance (±BPM, default 10)')
-    parser.add_argument('--composer', type=str, help='Specify composer name (can be combined)')
-    parser.add_argument('--performer', type=str, help='Specify performer name (can be combined)')
-    parser.add_argument('--conductor', type=str, help='Specify conductor name (can be combined)')
-    parser.add_argument('--genre', type=str, help='Specify genre name (can be combined)')
-    parser.add_argument('--mood', type=str, help='Specify mood (can be combined)')
+    parser = argparse.ArgumentParser(description="拡張版音楽再生システム (ジャケット画像選曲対応)")
+    parser.add_argument('--tempo', type=int, help='テンポ(BPM)を直接指定して再生 (単独または併用)')
+    parser.add_argument('--tempo-tol', type=int, default=10, help='テンポ許容範囲(±BPM) (デフォルト10)')
+    parser.add_argument('--composer', type=str, help='作曲家名を指定して再生 (単独または併用)')
+    parser.add_argument('--performer', type=str, help='演奏者名を指定して再生 (単独または併用)')
+    parser.add_argument('--conductor', type=str, help='指揮者名を指定して再生 (単独または併用)')
+    parser.add_argument('--genre', type=str, help='ジャンル名を指定して再生 (単独または併用)')
+    parser.add_argument('--mood', type=str, help='ムードを指定して再生 (単独または併用)')
     parser.add_argument('--device', type=str, choices=['hw:0,0', 'hw:1,0', 'hw:2,0', 'hw:3,0', 'bluealsa'],
-                        help='Specify output device')
-    parser.add_argument('--mic-device', type=int, help='Manually specify microphone device ID')
+                        help='出力デバイスを指定')
+    parser.add_argument('--mic-device', type=int, help='マイクデバイスIDを手動指定')
     parser.add_argument('--no-voice', dest='voice', action='store_false',
-                        help='Disable voice recognition at startup (no microphone)')
+                        help='音声認識を無効化して起動 (マイク不使用)')
     parser.set_defaults(voice=True)
     args = parser.parse_args()
 
@@ -11149,11 +11163,11 @@ if __name__ == "__main__":
         # --no-voice 指定時はコマンドラインで即座に無効化
         if not args.voice:
             VOICE_RECOGNITION_ENABLED = False
-            print("🔇 Voice recognition: disabled (--no-voice)")
+            print("🔇 音声認識: 無効化 (--no-voice)")
 
         if args.device:
             output_device = args.device
-            print(f"🔊 Output device: {output_device}")
+            print(f"🔊 出力デバイス: {output_device}")
 
         # ★★★ 起動スプラッシュ ★★★
         show_splash_screen()
@@ -11170,7 +11184,7 @@ if __name__ == "__main__":
         if VOICE_RECOGNITION_AVAILABLE and VOICE_RECOGNITION_ENABLED:
             if args.mic_device is not None:
                 USB_MIC_DEVICE_ID = args.mic_device
-                print(f"🎤 Manually specified mic device: {USB_MIC_DEVICE_ID}")
+                print(f"🎤 手動指定されたマイクデバイス: {USB_MIC_DEVICE_ID}")
             else:
                 detect_usb_microphone()
 
@@ -11189,20 +11203,20 @@ if __name__ == "__main__":
             cli_filters['mood'] = args.mood
 
         if cli_filters:
-            print(f"🔍 Searching with CLI filters: {cli_filters}")
+            print(f"🔍 CLI条件で検索: {cli_filters}")
             playlist = get_tracks_by_filters(cli_filters, limit=500)
             if playlist:
-                print(f"🎵 Playing {len(playlist)} matching track(s)")
+                print(f"🎵 条件に一致する曲を'{len(playlist)}曲再生します")
                 play_music_with_mode_switching(playlist)
             else:
-                print("⚠ No tracks matched the specified filters")
+                print("⚠ 条件に一致する曲が見つかりませんでした")
         else:
-            print("🎵 Starting Qji Music Player")
+            print("🎵 拡張版音楽再生システムを開始します")
             interactive_mode()
 
     except KeyboardInterrupt:
-        print("\n👋 Exiting")
+        print("\n👋 プログラムを終了します")
     except Exception as e:
-        print(f"⚠ An error occurred: {e}")
+        print(f"⚠ エラーが発生しました: {e}")
         import traceback
         traceback.print_exc()
