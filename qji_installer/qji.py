@@ -1664,6 +1664,114 @@ def get_sample_rate(file_path):
     return 44100
 
 
+# ★★★ 音量一定化(loudnorm)用: 実測値キャッシュ ★★★
+LOUDNESS_CACHE_FILE = os.path.expanduser('~/.qji_loudness_cache.json')
+_loudness_cache_lock = threading.Lock()
+_loudness_cache_mem = None  # メモリ上キャッシュ（プロセス内で使い回す）
+
+
+def _load_loudness_cache():
+    global _loudness_cache_mem
+    if _loudness_cache_mem is not None:
+        return _loudness_cache_mem
+    try:
+        with open(LOUDNESS_CACHE_FILE, 'r', encoding='utf-8') as f:
+            _loudness_cache_mem = json.load(f)
+    except Exception:
+        _loudness_cache_mem = {}
+    return _loudness_cache_mem
+
+
+def _save_loudness_cache():
+    if _loudness_cache_mem is None:
+        return
+    try:
+        with open(LOUDNESS_CACHE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(_loudness_cache_mem, f, ensure_ascii=False)
+    except Exception:
+        pass
+
+
+def measure_track_loudness(file_path, target_i='-16', target_tp='-2.0', target_lra='11'):
+    """
+    ffmpeg loudnorm の1パス目（解析のみ・出力なし）を実行し、
+    そのファイル固有の実測ラウドネス値(measured_I/TP/LRA/thresh, offset)を取得する。
+    同一ファイル(パス+更新日時+サイズ)は ~/.qji_loudness_cache.json にキャッシュして再解析を省略する。
+
+    戻り値: dict（measured_I, measured_TP, measured_LRA, measured_thresh, offset） または None（失敗時）
+    """
+    try:
+        st = os.stat(file_path)
+        cache_key = f"{file_path}|{st.st_mtime}|{st.st_size}|{target_i}|{target_tp}|{target_lra}"
+    except OSError:
+        return None
+
+    with _loudness_cache_lock:
+        cache = _load_loudness_cache()
+        if cache_key in cache:
+            return cache[cache_key]
+
+    cmd = [
+        'ffmpeg', '-hide_banner', '-nostats',
+        '-i', file_path,
+        '-af', f'loudnorm=I={target_i}:TP={target_tp}:LRA={target_lra}:print_format=json',
+        '-f', 'null', '-'
+    ]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        stderr = result.stderr or ''
+        start = stderr.rfind('{')
+        end = stderr.rfind('}')
+        if start == -1 or end == -1 or end < start:
+            return None
+        stats = json.loads(stderr[start:end + 1])
+        measured = {
+            'measured_I':      stats.get('input_i'),
+            'measured_TP':     stats.get('input_tp'),
+            'measured_LRA':    stats.get('input_lra'),
+            'measured_thresh': stats.get('input_thresh'),
+            'offset':          stats.get('target_offset'),
+        }
+        # 実測値が異常(nan/inf等)な場合は使わない
+        for v in measured.values():
+            fv = float(v)
+            if fv != fv or fv in (float('inf'), float('-inf')):
+                return None
+    except Exception:
+        return None
+
+    with _loudness_cache_lock:
+        cache = _load_loudness_cache()
+        cache[cache_key] = measured
+        _save_loudness_cache()
+
+    return measured
+
+
+def build_loudnorm_filter(file_path=None, target_i='-16', target_tp='-2.0', target_lra='11'):
+    """
+    音量一定化フィルター文字列を構築する。
+    file_path が指定され、かつ実測に成功した場合は2パス(linear=true)の
+    正確なラウドネス正規化を行う（曲ごとの音量差を実際に揃える）。
+    file_path が無い(ラジオ/AirPlay等のライブストリーム)、または実測失敗時は
+    従来通りのリアルタイム1パス(dynamic)方式にフォールバックする。
+    末尾にカンマを含む形式で返す（空文字なら未使用）。
+    """
+    if file_path:
+        measured = measure_track_loudness(file_path, target_i, target_tp, target_lra)
+        if measured:
+            return (
+                f'loudnorm=I={target_i}:TP={target_tp}:LRA={target_lra}:'
+                f"measured_I={measured['measured_I']}:"
+                f"measured_TP={measured['measured_TP']}:"
+                f"measured_LRA={measured['measured_LRA']}:"
+                f"measured_thresh={measured['measured_thresh']}:"
+                f"offset={measured['offset']}:linear=true,"
+            )
+    # フォールバック：ライブストリーム、または実測失敗時
+    return f'loudnorm=I={target_i}:TP={target_tp}:LRA={target_lra},'
+
+
 # ★★★ ゲインプリセット設定 ★★★
 GAIN_PRESETS = {
     'classical': 0.0,      # クラシック用：0dB（歪みを防ぐ）
@@ -2995,7 +3103,7 @@ def play_radio_stream(station):
 
         loudness_filter = ''
         if loudness_normalization:
-            loudness_filter = 'loudnorm=I=-16:TP=-1.5:LRA=11,'
+            loudness_filter = 'loudnorm=I=-16:TP=-2.0:LRA=11,'
             print("   🔊 音量一定化: ON")
 
         if tinnitus_reduction_mode:
@@ -3668,7 +3776,7 @@ def play_airplay_stream():
 
             # ── フィルターチェーン構築 ────────────────────────────────────
             gain_db         = GAIN_PRESETS.get(current_gain_preset, 0.0)
-            loudness_filter = 'loudnorm=I=-16:TP=-1.5:LRA=11,' if loudness_normalization else ''
+            loudness_filter = 'loudnorm=I=-16:TP=-2.0:LRA=11,' if loudness_normalization else ''
             eq_filter       = get_equalizer_ffmpeg_filter()
             eq_part         = f'{eq_filter},' if eq_filter else ''
             _fp_label       = FILTER_PRESET_LABELS.get(current_filter_preset, current_filter_preset)
@@ -4285,7 +4393,7 @@ def play_gmediarender_stream():
 
             # ── フィルターチェーン構築（AirPlay と同一ロジック）────────────
             gain_db         = GAIN_PRESETS.get(current_gain_preset, 0.0)
-            loudness_filter = 'loudnorm=I=-16:TP=-1.5:LRA=11,' if loudness_normalization else ''
+            loudness_filter = 'loudnorm=I=-16:TP=-2.0:LRA=11,' if loudness_normalization else ''
             eq_filter       = get_equalizer_ffmpeg_filter()
             eq_part         = f'{eq_filter},' if eq_filter else ''
             _fp_label       = FILTER_PRESET_LABELS.get(current_filter_preset, current_filter_preset)
@@ -7455,8 +7563,11 @@ def _preset_musikverein(gain_db, current_volume, eq_part, musikverein_room_effec
         parts.append('equalizer=f=1800:t=q:w=1.2:g=0.25')
     if loudness_filter:
         parts.append(loudness_filter.rstrip(','))
+    # ★ loudnorm使用時は既に-2.0dBTPまで詰まっているため、この段の出力ゲインは
+    #   0dB超（＝さらなるブースト）を許可しない。減衰(マイナス側)のみ有効。
+    _post_gain = current_volume if not loudness_filter else min(current_volume, 0)
     parts.append(
-        f'{eq_part}volume={current_volume}dB,'
+        f'{eq_part}volume={_post_gain}dB,'
         'alimiter=level_in=1.0:level_out=1.0:limit=0.95:attack=2:release=50'
     )
     main_chain = ','.join(parts)
@@ -7541,8 +7652,11 @@ def _preset_piano(gain_db, current_volume, eq_part, musikverein_room_effects,
         parts.append('equalizer=f=1800:t=q:w=1.2:g=0.25')
     if loudness_filter:
         parts.append(loudness_filter.rstrip(','))
+    # ★ loudnorm使用時は既に-2.0dBTPまで詰まっているため、この段の出力ゲインは
+    #   0dB超（＝さらなるブースト）を許可しない。減衰(マイナス側)のみ有効。
+    _post_gain = current_volume if not loudness_filter else min(current_volume, 0)
     parts.append(
-        f'{eq_part}volume={current_volume}dB,'
+        f'{eq_part}volume={_post_gain}dB,'
         'alimiter=level_in=1.0:level_out=1.0:limit=0.95:attack=2:release=65'
     )
     main_chain = ','.join(parts)
@@ -7612,8 +7726,11 @@ def _preset_chamber(gain_db, current_volume, eq_part, musikverein_room_effects,
     parts.append('alimiter=level_in=1.0:level_out=1.0:limit=0.96:attack=1:release=50')
     if loudness_filter:
         parts.append(loudness_filter.rstrip(','))
+    # ★ loudnorm使用時は既に-2.0dBTPまで詰まっているため、この段の出力ゲインは
+    #   0dB超（＝さらなるブースト）を許可しない。減衰(マイナス側)のみ有効。
+    _post_gain = current_volume if not loudness_filter else min(current_volume, 0)
     parts.append(
-        f'{eq_part}volume={current_volume}dB,'
+        f'{eq_part}volume={_post_gain}dB,'
         'alimiter=level_in=1.0:level_out=1.0:limit=0.92:attack=1:release=50'
     )
     main_chain = ','.join(parts)
@@ -7708,8 +7825,11 @@ def _preset_vocal(gain_db, current_volume, eq_part, musikverein_room_effects,
         parts.append('equalizer=f=1800:t=q:w=1.0:g=1.2')
     if loudness_filter:
         parts.append(loudness_filter.rstrip(','))
+    # ★ loudnorm使用時は既に-2.0dBTPまで詰まっているため、この段の出力ゲインは
+    #   0dB超（＝さらなるブースト）を許可しない。減衰(マイナス側)のみ有効。
+    _post_gain = current_volume if not loudness_filter else min(current_volume, 0)
     parts.append(
-        f'{eq_part}volume={current_volume}dB,'
+        f'{eq_part}volume={_post_gain}dB,'
         'alimiter=level_in=1.0:level_out=1.0:limit=0.95:attack=2:release=50'
     )
     main_chain = ','.join(parts)
@@ -7748,6 +7868,7 @@ def _preset_jazz(gain_db, current_volume, eq_part, musikverein_room_effects,
     #    を先に引いておくことで asoftclip への入力を適正レベルに保つ。
     #    音楽的な豊かさ・ダイナミクスはそのまま。外部ゲインプリセットには影響しない。
     _jazz_eq_offset = -0.7  # -1.8 → -0.7：音量感を戻しつつ歪みを抑制  # EQ累積ブーストの実測ピーク補正値
+    #_jazz_eq_offset = -1.8  # -1.8 → -0.7：音量感を戻しつつ歪みを抑制  # EQ累積ブーストの実測ピーク補正値
     parts.append(f'volume={gain_db + _jazz_eq_offset}dB')
     parts += [
         'equalizer=f=30:t=q:w=0.7:g=2.0',
@@ -7796,8 +7917,11 @@ def _preset_jazz(gain_db, current_volume, eq_part, musikverein_room_effects,
     parts.append('asoftclip=type=tanh:threshold=0.95:output=0.95')
     if loudness_filter:
         parts.append(loudness_filter.rstrip(','))
+    # ★ loudnorm使用時は既に-2.0dBTPまで詰まっているため、この段の出力ゲインは
+    #   0dB超（＝さらなるブースト）を許可しない。減衰(マイナス側)のみ有効。
+    _post_gain = current_volume if not loudness_filter else min(current_volume, 0)
     parts.append(
-        f'{eq_part}volume={current_volume}dB,'
+        f'{eq_part}volume={_post_gain}dB,'
         'asoftclip=type=tanh:threshold=0.95:output=0.95'
     )
     main_chain = ','.join(parts)
@@ -7865,8 +7989,11 @@ def _preset_radio(gain_db, current_volume, eq_part, musikverein_room_effects,
     parts.append('alimiter=level_in=1.0:level_out=1.0:limit=0.98:attack=2:release=50')
     if loudness_filter:
         parts.append(loudness_filter.rstrip(','))
+    # ★ loudnorm使用時は既に-2.0dBTPまで詰まっているため、この段の出力ゲインは
+    #   0dB超（＝さらなるブースト）を許可しない。減衰(マイナス側)のみ有効。
+    _post_gain = current_volume if not loudness_filter else min(current_volume, 0)
     parts.append(
-        f'{eq_part}volume={current_volume}dB,'
+        f'{eq_part}volume={_post_gain}dB,'
         'alimiter=level_in=1.0:level_out=1.0:limit=0.95:attack=2:release=50'
     )
     main_chain = ','.join(parts)
@@ -7952,8 +8079,11 @@ def _preset_spatial(gain_db, current_volume, eq_part, musikverein_room_effects,
         parts.append('equalizer=f=1800:t=q:w=1.2:g=0.35')
     if loudness_filter:
         parts.append(loudness_filter.rstrip(','))
+    # ★ loudnorm使用時は既に-2.0dBTPまで詰まっているため、この段の出力ゲインは
+    #   0dB超（＝さらなるブースト）を許可しない。減衰(マイナス側)のみ有効。
+    _post_gain = current_volume if not loudness_filter else min(current_volume, 0)
     parts.append(
-        f'{eq_part}volume={current_volume}dB,'
+        f'{eq_part}volume={_post_gain}dB,'
         'alimiter=level_in=1.0:level_out=1.0:limit=0.95:attack=2:release=50'
     )
     main_chain = ','.join(parts)
@@ -8058,8 +8188,11 @@ def _preset_calm(gain_db, current_volume, eq_part, musikverein_room_effects,
         parts.append('equalizer=f=1800:t=q:w=1.2:g=0.25')
     if loudness_filter:
         parts.append(loudness_filter.rstrip(','))
+    # ★ loudnorm使用時は既に-2.0dBTPまで詰まっているため、この段の出力ゲインは
+    #   0dB超（＝さらなるブースト）を許可しない。減衰(マイナス側)のみ有効。
+    _post_gain = current_volume if not loudness_filter else min(current_volume, 0)
     parts.append(
-        f'{eq_part}volume={current_volume}dB,'
+        f'{eq_part}volume={_post_gain}dB,'
         'alimiter=level_in=1.0:level_out=1.0:limit=0.95:attack=2:release=50'
     )
     main_chain = ','.join(parts)
@@ -8147,8 +8280,11 @@ def _preset_deep(gain_db, current_volume, eq_part, musikverein_room_effects,
         parts.append('equalizer=f=1800:t=q:w=1.2:g=0.25')
     if loudness_filter:
         parts.append(loudness_filter.rstrip(','))
+    # ★ loudnorm使用時は既に-2.0dBTPまで詰まっているため、この段の出力ゲインは
+    #   0dB超（＝さらなるブースト）を許可しない。減衰(マイナス側)のみ有効。
+    _post_gain = current_volume if not loudness_filter else min(current_volume, 0)
     parts.append(
-        f'{eq_part}volume={current_volume}dB,'
+        f'{eq_part}volume={_post_gain}dB,'
         'alimiter=level_in=1.0:level_out=1.0:limit=0.95:attack=2:release=50'
     )
     main_chain = ','.join(parts)
@@ -8733,11 +8869,13 @@ def play_one_track(track, show_controls=True):
         gain_db = GAIN_PRESETS.get(current_gain_preset, 0.0)
         
         # ★★★ 音量一定化フィルターを構築 ★★★
+        # ※ 2パス実測方式は解析待ちで再生が止まる問題があったため保留し、
+        #    従来のリアルタイム1パス(dynamic)方式に戻す。
+        #    2パス関数(measure_track_loudness/build_loudnorm_filter)は
+        #    将来再検討する場合のためファイル内に残してあるが、現状は未使用。
         loudness_filter = ''
         if loudness_normalization:
-            # ラウドネスノーマライゼーション（EBU R128準拠）
-            # measured_I=-23 LUFS, measured_TP=-2.0 dBTP, measured_LRA=7.0 LU, measured_thresh=-33.0 LUFS
-            loudness_filter = 'loudnorm=I=-16:TP=-1.5:LRA=11,'
+            loudness_filter = 'loudnorm=I=-16:TP=-2.0:LRA=11,'
         
         # ★★★ フィルター引数を構築（Air Particle Layer 対応） ★★★
         filter_args = _build_audio_filter_args(
@@ -9653,9 +9791,12 @@ def play_tracks_gapless(tracks, start_index=0):
         gain_db = GAIN_PRESETS.get(current_gain_preset, 0.0)
         
         # ★★★ 音量一定化フィルターを構築 ★★★
+        # ※ ギャップレス再生は複数曲を1本のffmpegストリームに連結するため、
+        #    曲ごとの2パス実測(build_loudnorm_filter)は適用できない。
+        #    従来通りのリアルタイム1パス(dynamic)方式を使用する。
         loudness_filter = ''
         if loudness_normalization:
-            loudness_filter = 'loudnorm=I=-16:TP=-1.5:LRA=11,'
+            loudness_filter = 'loudnorm=I=-16:TP=-2.0:LRA=11,'
         
         # ★★★ フィルター引数を構築（Air Particle Layer 対応） ★★★
         filter_args = _build_audio_filter_args(
@@ -11060,7 +11201,7 @@ def interactive_mode():
                 # ★★★ Qobuz ストリーミング ★★★
                 import qji_qobuz
                 _gain_db = GAIN_PRESETS.get(current_gain_preset, 0.0)
-                _loudness = "loudnorm=I=-16:TP=-1.5:LRA=11," if loudness_normalization else ""
+                _loudness = "loudnorm=I=-16:TP=-2.0:LRA=11," if loudness_normalization else ""
                 qji_qobuz.run(
                     build_filter_func=_build_audio_filter_args,
                     gain_preset=current_gain_preset,
@@ -11076,7 +11217,7 @@ def interactive_mode():
 
             elif choice == 's':   # ★★★ SoundCloud ストリーミング ★★★
                 import qji_soundcloud
-                _loudness = "loudnorm=I=-16:TP=-1.5:LRA=11," if loudness_normalization else ""
+                _loudness = "loudnorm=I=-16:TP=-2.0:LRA=11," if loudness_normalization else ""
                 qji_soundcloud.run(
                     build_filter_func=_build_audio_filter_args,
                     gain_preset=current_gain_preset,
@@ -11092,7 +11233,7 @@ def interactive_mode():
  
             elif choice == 'y':   # ★★★ YouTube Music ストリーミング ★★★
                 import qji_ytmusic
-                _loudness = "loudnorm=I=-16:TP=-1.5:LRA=11," if loudness_normalization else ""
+                _loudness = "loudnorm=I=-16:TP=-2.0:LRA=11," if loudness_normalization else ""
                 qji_ytmusic.run(
                     build_filter_func=_build_audio_filter_args,
                     gain_preset=current_gain_preset,
