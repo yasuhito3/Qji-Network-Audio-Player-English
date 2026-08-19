@@ -496,7 +496,7 @@ function _showPlayingBar(queue){
   });
 
   bar.innerHTML =
-    '<div style="color:#4ecdc4;font-size:.78rem;font-weight:700;white-space:nowrap;flex-shrink:0;">▶ 再生中</div>'
+    '<div style="color:#4ecdc4;font-size:.78rem;font-weight:700;white-space:nowrap;flex-shrink:0;">▶ Now playing</div>'
     +'<div style="color:var(--muted);font-size:.74rem;white-space:nowrap;flex-shrink:0;">'+queue.length+'</div>'
     +'<div style="display:flex;gap:5px;flex:1;overflow-x:auto;align-items:center;padding:2px 0;">'+thumbsHtml+'</div>';
   bar.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 18px;'
@@ -537,7 +537,7 @@ function _esc2(s){ return (s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
             +'font-size:1.1rem;font-family:sans-serif;gap:18px;">'
             +'<div style="font-size:2.5rem;">🎵</div>'
             +'<div>Qobuz playback ended</div>'
-            +'<div style="font-size:.82rem;color:#6868a0;">このウィンドウを閉じてください</div>'
+            +'<div style="font-size:.82rem;color:#6868a0;">You can close this window</div>'
             +'</div>';
         }, 300);
       } else { setTimeout(poll, 1000); }
@@ -690,7 +690,7 @@ def page_playlists(page=1):
     # PLキュー固定バー（画面下部）
     plq_bar = (
         '<div id="plq-bar">'
-        '<div style="color:#7b68ee;font-size:.78rem;font-weight:700;flex-shrink:0;">🎵 PLキュー</div>'
+        '<div style="color:#7b68ee;font-size:.78rem;font-weight:700;flex-shrink:0;">🎵 Playlist queue</div>'
         '<div id="plq-cnt" style="color:var(--muted);font-size:.74rem;'
         'flex-shrink:0;min-width:30px;">0</div>'
         '<div id="plq-names" style="flex:1;font-size:.72rem;color:var(--muted);'
@@ -830,7 +830,7 @@ def page_playlist_detail(pid):
         'border:1px solid rgba(255,100,100,.3);border-radius:8px;margin-top:12px;">'
         '⚠ Could not fetch tracks.<br>'
         f'<a href="/api/debug-playlist?id={_esc(pid)}" target="_blank" '
-        'style="color:#7b68ee;font-size:.85rem;">→ デバッグ情報を確認</a>'
+        'style="color:#7b68ee;font-size:.85rem;">→ View debug info</a>'
         '</p>'
     ) if not tracks else ''
     body = (f'<div class="ap"><a class="bb" href="/playlists">← Playlists</a>'
@@ -958,7 +958,7 @@ def page_album(album_id, local=False):
     body  = (f'<div class="ap"><a class="bb" href="{back}">{blab}</a>'
              f'<div class="ah">{ih}<div class="am"><h2>{_esc(ttl)}</h2>'
              f'<div class="ar">{_esc(art)}</div>{abadge}'
-             f'<a class="pa" href="#" onclick="playAll(\'{album_id}\',\'{_js(ttl)}\');return false">▶ 1曲目から再生</a>'
+             f'<a class="pa" href="#" onclick="playAll(\'{album_id}\',\'{_js(ttl)}\');return false">▶ Play from track 1</a>'
              f'{del_btn}'
              f'</div></div>'
              f'<div class="nt">Click a track to start playback in the terminal</div>'
