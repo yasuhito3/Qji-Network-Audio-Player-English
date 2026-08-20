@@ -36,11 +36,11 @@ FILTER_PRESET_LABELS = {
     'chamber':     '🏠 Chamber',
     'vocal':       '🎙 Vocal',
     'jazz':        '🎷 Jazz',
-    'calm':        '🌿 Calm (安らぎ)',
-    'deep':        '🌊 Deep (深淵)',
-    'spatial':     '🌐 Spatial (3D空間音響)',
+    'calm':        '🌿 Calm (soothing)',
+    'deep':        '🌊 Deep (abyssal)',
+    'spatial':     '🌐 Spatial (3D spatial audio)',
     'radio':       '📻 Radio',
-    'bypass':      '⚪ Bypass (素通し)',
+    'bypass':      '⚪ Bypass (unprocessed)',
 }
 GAIN_PRESETS_DB = {
     'classical': 0.0, 'general': -1.5, 'jazz_pop': -3.5, 'loud': -5.0,
@@ -1161,12 +1161,12 @@ def _key_loop(p_ff, p_ap, track: dict, state: dict,
                               if state['gain_preset'] in GAIN_ORDER else 0
                     state['gain_preset'] = GAIN_ORDER[(cur_idx + 1) % len(GAIN_ORDER)]
                     new_db = GAIN_PRESETS_DB[state['gain_preset']]
-                    sys.stdout.write(f'\r  🎚 ゲイン: {state["gain_preset"]}  ({new_db:+.1f}dB)  ※次曲から適用  \n')
+                    sys.stdout.write(f'\r  🎚 Gain: {state["gain_preset"]}  ({new_db:+.1f}dB)  (applies from next track)  \n')
                     sys.stdout.flush()
                 elif ch == b'w':
                     state['air_layer'] = not state.get('air_layer', True)
                     apl_str = '🌿 ON' if state['air_layer'] else 'OFF'
-                    sys.stdout.write(f'\r  🌿 Air Particle Layer: {apl_str}  ※次曲から適用  \n')
+                    sys.stdout.write(f'\r  🌿 Air Particle Layer: {apl_str}  (applies from next track)  \n')
                     sys.stdout.flush()
                 elif ch in (b'+', b'='):
                     state['volume'] = min(state.get('volume', 12) + 1, 30)
