@@ -46,11 +46,11 @@ FILTER_PRESET_LABELS = {
     'chamber':     '🏠 Chamber',
     'vocal':       '🎙 Vocal',
     'jazz':        '🎷 Jazz',
-    'calm':        '🌿 Calm (安らぎ)',
-    'deep':        '🌊 Deep (深淵)',
-    'spatial':     '🌐 Spatial (3D空間音響)',
+    'calm':        '🌿 Calm (soothing)',
+    'deep':        '🌊 Deep (abyssal)',
+    'spatial':     '🌐 Spatial (3D spatial audio)',
     'radio':       '📻 Radio',
-    'bypass':      '⚪ Bypass (素通し)',
+    'bypass':      '⚪ Bypass (unprocessed)',
 }
 GAIN_PRESETS_DB = {
     'classical': 0.0, 'general': -1.5, 'jazz_pop': -3.5, 'loud': -5.0,
@@ -933,6 +933,18 @@ def _play_one(track: dict, build_filter_func, state: dict,
         )
     finally:
         _qji.current_filter_preset = _prev_fp
+
+    # ★★★ ピークモニターGUI用ログ出力: YouTube Music再生でも有効化 ★★★
+    # （qji.py本体と同じ astats+ametadata パススルー方式。音声そのものには影響しない）
+    # ★ Qobuzと異なりギャップレス先読みが無い逐次再生のため、Radio/AirPlayと
+    #   同じ「固定パス＋曲ごとにos.remove()して作り直す」方式で安全。
+    try:
+        _yt_declip_log_path = f'/tmp/qji_declip_{os.getpid()}.log'
+        if os.path.exists(_yt_declip_log_path):
+            os.remove(_yt_declip_log_path)
+        filter_args = _qji._wrap_filter_args_with_declip_monitor(filter_args, _yt_declip_log_path)
+    except Exception:
+        pass
 
     state['fmt_name'] = 'YouTube Music'
 
