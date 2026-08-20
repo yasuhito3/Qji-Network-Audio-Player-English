@@ -30,11 +30,11 @@ FILTER_PRESET_LABELS = {
     'chamber':     '🏠 Chamber',
     'vocal':       '🎙 Vocal',
     'jazz':        '🎷 Jazz',
-    'calm':        '🌿 Calm (tranquil)',
-    'deep':        '🌊 Deep (immersive)',
-    'spatial':     '🌐 Spatial (3D audio)',
+    'calm':        '🌿 Calm (soothing)',
+    'deep':        '🌊 Deep (abyssal)',
+    'spatial':     '🌐 Spatial (3D spatial audio)',
     'radio':       '📻 Radio',
-    'bypass':      '⚪ Bypass (no processing)',
+    'bypass':      '⚪ Bypass (unprocessed)',
 }
 GAIN_PRESETS_DB = {
     'classical': 0.0, 'general': -1.5, 'jazz_pop': -3.5, 'loud': -5.0,
@@ -990,7 +990,7 @@ def page_favorites() -> str:
         f'border:1px solid var(--border);border-radius:7px;color:var(--muted);'
         f'cursor:pointer;font-size:.8rem;font-weight:600;white-space:nowrap">'
         f'▶ Play all {len(favs)}</button>'
-        f'<button onclick="savePlaylistDialog(JSON.stringify(JSON.parse(document.getElementById(\'favs-data\').textContent)), \'お気に入り\')" '
+        f'<button onclick="savePlaylistDialog(JSON.stringify(JSON.parse(document.getElementById(\'favs-data\').textContent)), \'Favourites\')" '
         f'style="padding:5px 14px;background:var(--hover);'
         f'border:1px solid var(--border);border-radius:7px;color:var(--muted);'
         f'cursor:pointer;font-size:.8rem;white-space:nowrap">'
